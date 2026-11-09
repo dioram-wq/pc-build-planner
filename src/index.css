@@ -77,4 +77,59 @@ h2 {
 
 .slot-value {
   color: #78716c;
+  text-align: right;
+}
+
+.fields {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+select {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid #d6cec2;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+select:focus-visible {
+  outline: 2px solid #9a3412;
+  outline-offset: 2px;
+}
+
+.status {
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 8px;
+}
+
+.status p {
+  margin: 0;
+}
+
+.status ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.status.ok {
+  background: #e7f6ec;
+  color: #145c32;
+}
+
+.status.bad {
+  background: #fde8ee;
+  color: #9f1239;
 }
