@@ -58,7 +58,6 @@ export const memory = [
 ] as const satisfies readonly Memory[]
 
 export const laterChecks = [
-  { id: 'memory', label: 'Memory', note: 'RAM type vs motherboard' },
   { id: 'psu', label: 'Power supply', note: 'Wattage vs estimated draw' },
   { id: 'case', label: 'Case', note: 'Cooler height and graphics card length' },
 ] as const
