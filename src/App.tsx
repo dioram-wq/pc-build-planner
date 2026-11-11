@@ -2,11 +2,14 @@ import { useState } from 'react'
 import {
   checkCpuSocket,
   checkMemoryType,
+  checkPowerSupply,
   type Cpu,
+  type Gpu,
   type Memory,
   type Motherboard,
+  type Psu,
 } from './compatibility.ts'
-import { cpus, laterChecks, memory, motherboards } from './parts.ts'
+import { cpus, gpus, laterChecks, memory, motherboards, psus } from './parts.ts'
 
 function findPart<T extends { id: string }>(parts: readonly T[], id: string): T {
   const part = parts.find((item) => item.id === id)
@@ -74,13 +77,58 @@ function MemoryStatus({
   )
 }
 
+function PowerSupplyStatus({
+  cpu,
+  gpu,
+  psu,
+}: {
+  cpu: Cpu
+  gpu: Gpu | null
+  psu: Psu | null
+}) {
+  const result = checkPowerSupply(cpu, gpu, psu)
+
+  if (result.status === 'ok' && psu) {
+    return (
+      <p className="status ok" role="status">
+        {`Estimated draw is ${result.estimatedDrawWatts}W. ${psu.name} (${psu.wattage}W) meets the ${result.recommendedWatts}W recommendation.`}
+      </p>
+    )
+  }
+
+  let heading = 'No power supply selected.'
+  let tone = 'missing'
+  if (result.status === 'tight') {
+    heading = 'Tight.'
+    tone = 'tight'
+  } else if (result.status === 'insufficient') {
+    heading = 'Insufficient.'
+    tone = 'bad'
+  }
+
+  return (
+    <div className={`status ${tone}`} role="status">
+      <p>{heading}</p>
+      <ul>
+        {result.issues.map((issue) => (
+          <li key={issue.code}>{issue.message}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export default function App() {
   const [cpuId, setCpuId] = useState<string>(cpus[0].id)
   const [motherboardId, setMotherboardId] = useState<string>(motherboards[0].id)
   const [memoryId, setMemoryId] = useState<string>(memory[0].id)
+  const [gpuId, setGpuId] = useState<string>(gpus[0].id)
+  const [psuId, setPsuId] = useState<string>(psus[0].id)
   const cpu = findPart(cpus, cpuId)
   const motherboard = findPart(motherboards, motherboardId)
   const selectedMemory = findPart(memory, memoryId)
+  const gpu = gpuId ? findPart(gpus, gpuId) : null
+  const psu = psuId ? findPart(psus, psuId) : null
 
   return (
     <main className="page">
@@ -88,8 +136,9 @@ export default function App() {
         <p className="eyebrow">Parts desk</p>
         <h1>PC Build Planner</h1>
         <p className="lede">
-          Choose a processor, a motherboard, and memory. The planner checks
-          that the CPU socket and the memory type match the board.
+          Choose a processor, a motherboard, memory, a graphics card, and a
+          power supply. The planner checks that the CPU socket and the memory
+          type match the board, and that the supply covers the estimated draw.
         </p>
       </header>
 
@@ -144,9 +193,44 @@ export default function App() {
               ))}
             </select>
           </div>
+          <div className="field">
+            <label htmlFor="gpu">Graphics card</label>
+            <select
+              id="gpu"
+              value={gpuId}
+              onChange={(event) => {
+                setGpuId(event.target.value)
+              }}
+            >
+              <option value="">Integrated graphics</option>
+              {gpus.map((part) => (
+                <option key={part.id} value={part.id}>
+                  {part.name} · {part.boardPowerWatts}W
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="psu">Power supply</label>
+            <select
+              id="psu"
+              value={psuId}
+              onChange={(event) => {
+                setPsuId(event.target.value)
+              }}
+            >
+              <option value="">No power supply</option>
+              {psus.map((part) => (
+                <option key={part.id} value={part.id}>
+                  {part.name} · {part.wattage}W
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <SocketStatus cpu={cpu} motherboard={motherboard} />
         <MemoryStatus memory={selectedMemory} motherboard={motherboard} />
+        <PowerSupplyStatus cpu={cpu} gpu={gpu} psu={psu} />
       </section>
 
       <section className="panel" aria-labelledby="later-heading">

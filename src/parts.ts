@@ -83,6 +83,5 @@ export const psus = [
 ] as const satisfies readonly Psu[]
 
 export const laterChecks = [
-  { id: 'psu', label: 'Power supply', note: 'Wattage vs estimated draw' },
   { id: 'case', label: 'Case', note: 'Cooler height and graphics card length' },
 ] as const

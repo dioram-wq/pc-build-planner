@@ -133,3 +133,13 @@ select:focus-visible {
   background: #fde8ee;
   color: #9f1239;
 }
+
+.status.tight {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status.missing {
+  background: #f5f5f4;
+  color: #44403c;
+}
