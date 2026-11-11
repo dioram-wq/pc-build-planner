@@ -1,10 +1,20 @@
-import type { Cpu, Memory, Motherboard } from './compatibility.ts'
+import type { Cpu, Gpu, Memory, Motherboard, Psu } from './compatibility.ts'
 
 export const cpus = [
-  { id: 'cpu-7600', name: 'AMD Ryzen 5 7600', socket: 'AM5' },
-  { id: 'cpu-5800x', name: 'AMD Ryzen 7 5800X', socket: 'AM4' },
-  { id: 'cpu-14600k', name: 'Intel Core i5-14600K', socket: 'LGA1700' },
-  { id: 'cpu-265k', name: 'Intel Core Ultra 7 265K', socket: 'LGA1851' },
+  { id: 'cpu-7600', name: 'AMD Ryzen 5 7600', socket: 'AM5', tdpWatts: 65 },
+  { id: 'cpu-5800x', name: 'AMD Ryzen 7 5800X', socket: 'AM4', tdpWatts: 105 },
+  {
+    id: 'cpu-14600k',
+    name: 'Intel Core i5-14600K',
+    socket: 'LGA1700',
+    tdpWatts: 125,
+  },
+  {
+    id: 'cpu-265k',
+    name: 'Intel Core Ultra 7 265K',
+    socket: 'LGA1851',
+    tdpWatts: 125,
+  },
 ] as const satisfies readonly Cpu[]
 
 export const motherboards = [
@@ -56,6 +66,21 @@ export const memory = [
     memoryType: 'DDR4',
   },
 ] as const satisfies readonly Memory[]
+
+export const gpus = [
+  { id: 'gpu-4060', name: 'NVIDIA GeForce RTX 4060', boardPowerWatts: 115 },
+  { id: 'gpu-4070', name: 'NVIDIA GeForce RTX 4070', boardPowerWatts: 200 },
+  { id: 'gpu-7800xt', name: 'AMD Radeon RX 7800 XT', boardPowerWatts: 263 },
+  { id: 'gpu-4090', name: 'NVIDIA GeForce RTX 4090', boardPowerWatts: 450 },
+] as const satisfies readonly Gpu[]
+
+export const psus = [
+  { id: 'psu-550', name: 'Corsair CX550', wattage: 550 },
+  { id: 'psu-650', name: 'Corsair RM650x', wattage: 650 },
+  { id: 'psu-750', name: 'Seasonic Focus GX-750', wattage: 750 },
+  { id: 'psu-850', name: 'Corsair RM850x', wattage: 850 },
+  { id: 'psu-1000', name: 'be quiet! Straight Power 12', wattage: 1000 },
+] as const satisfies readonly Psu[]
 
 export const laterChecks = [
   { id: 'psu', label: 'Power supply', note: 'Wattage vs estimated draw' },

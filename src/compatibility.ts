@@ -6,6 +6,7 @@ export type Cpu = {
   id: string
   name: string
   socket: CpuSocket
+  tdpWatts: number
 }
 
 export type Motherboard = {
@@ -73,5 +74,98 @@ export function checkMemoryType(
         message: `${memory.name} (${memory.memoryType}) does not fit ${motherboard.name} (${motherboard.memoryType}).`,
       },
     ],
+  }
+}
+
+export type Gpu = {
+  id: string
+  name: string
+  boardPowerWatts: number
+}
+
+export type Psu = {
+  id: string
+  name: string
+  wattage: number
+}
+
+export const PLATFORM_ALLOWANCE_WATTS = 100
+
+export const RECOMMENDED_HEADROOM_RATIO = 0.25
+
+export type PowerStatus = 'ok' | 'tight' | 'insufficient' | 'missing'
+
+export type PowerIssue = {
+  code: 'psu-tight' | 'psu-insufficient' | 'psu-missing'
+  message: string
+}
+
+export type PowerCheck = {
+  status: PowerStatus
+  estimatedDrawWatts: number
+  recommendedWatts: number
+  issues: PowerIssue[]
+}
+
+function recommendedPsuWatts(estimatedDrawWatts: number): number {
+  return Math.ceil(estimatedDrawWatts * (1 + RECOMMENDED_HEADROOM_RATIO))
+}
+
+export function checkPowerSupply(
+  cpu: Cpu,
+  gpu: Gpu | null,
+  psu: Psu | null,
+): PowerCheck {
+  const estimatedDrawWatts =
+    cpu.tdpWatts + (gpu?.boardPowerWatts ?? 0) + PLATFORM_ALLOWANCE_WATTS
+  const recommendedWatts = recommendedPsuWatts(estimatedDrawWatts)
+
+  if (!psu) {
+    return {
+      status: 'missing',
+      estimatedDrawWatts,
+      recommendedWatts,
+      issues: [
+        {
+          code: 'psu-missing',
+          message: `Select a power supply to compare against the ${estimatedDrawWatts}W estimated draw.`,
+        },
+      ],
+    }
+  }
+
+  if (psu.wattage < estimatedDrawWatts) {
+    return {
+      status: 'insufficient',
+      estimatedDrawWatts,
+      recommendedWatts,
+      issues: [
+        {
+          code: 'psu-insufficient',
+          message: `${psu.name} (${psu.wattage}W) is below the ${estimatedDrawWatts}W estimated draw.`,
+        },
+      ],
+    }
+  }
+
+  if (psu.wattage < recommendedWatts) {
+    return {
+      status: 'tight',
+      estimatedDrawWatts,
+      recommendedWatts,
+      issues: [
+        {
+          code: 'psu-tight',
+          message: `${psu.name} (${psu.wattage}W) covers the ${estimatedDrawWatts}W estimate but is below the ${recommendedWatts}W recommendation.`,
+        },
+      ],
+    }
+  }
+
+  return {
+    status: 'ok',
+    estimatedDrawWatts,
+    recommendedWatts,
+    issues: [],
   }
 }
