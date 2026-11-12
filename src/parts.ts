@@ -1,4 +1,12 @@
-import type { Cpu, Gpu, Memory, Motherboard, Psu } from './compatibility.ts'
+import type {
+  Case,
+  Cpu,
+  CpuCooler,
+  Gpu,
+  Memory,
+  Motherboard,
+  Psu,
+} from './compatibility.ts'
 
 export const cpus = [
   { id: 'cpu-7600', name: 'AMD Ryzen 5 7600', socket: 'AM5', tdpWatts: 65 },
@@ -68,11 +76,69 @@ export const memory = [
 ] as const satisfies readonly Memory[]
 
 export const gpus = [
-  { id: 'gpu-4060', name: 'NVIDIA GeForce RTX 4060', boardPowerWatts: 115 },
-  { id: 'gpu-4070', name: 'NVIDIA GeForce RTX 4070', boardPowerWatts: 200 },
-  { id: 'gpu-7800xt', name: 'AMD Radeon RX 7800 XT', boardPowerWatts: 263 },
-  { id: 'gpu-4090', name: 'NVIDIA GeForce RTX 4090', boardPowerWatts: 450 },
+  {
+    id: 'gpu-4060',
+    name: 'NVIDIA GeForce RTX 4060',
+    boardPowerWatts: 115,
+    lengthMm: 240,
+  },
+  {
+    id: 'gpu-4070',
+    name: 'NVIDIA GeForce RTX 4070',
+    boardPowerWatts: 200,
+    lengthMm: 244,
+  },
+  {
+    id: 'gpu-7800xt',
+    name: 'AMD Radeon RX 7800 XT',
+    boardPowerWatts: 263,
+    lengthMm: 267,
+  },
+  {
+    id: 'gpu-4090',
+    name: 'NVIDIA GeForce RTX 4090',
+    boardPowerWatts: 450,
+    lengthMm: 304,
+  },
 ] as const satisfies readonly Gpu[]
+
+export const coolers = [
+  { id: 'cooler-l12s', name: 'Noctua NH-L12S', heightMm: 70 },
+  { id: 'cooler-l9a', name: 'Noctua NH-L9a', heightMm: 37 },
+  {
+    id: 'cooler-pa120',
+    name: 'Thermalright Peerless Assassin 120',
+    heightMm: 157,
+  },
+  { id: 'cooler-nhd15', name: 'Noctua NH-D15', heightMm: 165 },
+] as const satisfies readonly CpuCooler[]
+
+export const cases = [
+  {
+    id: 'case-north',
+    name: 'Fractal Design North',
+    maxGpuLengthMm: 355,
+    maxCoolerHeightMm: 170,
+  },
+  {
+    id: 'case-lancool',
+    name: 'Lian Li Lancool 216',
+    maxGpuLengthMm: 392,
+    maxCoolerHeightMm: 180,
+  },
+  {
+    id: 'case-nr200',
+    name: 'Cooler Master NR200P',
+    maxGpuLengthMm: 330,
+    maxCoolerHeightMm: 155,
+  },
+  {
+    id: 'case-sg13',
+    name: 'SilverStone SUGO SG13',
+    maxGpuLengthMm: 270,
+    maxCoolerHeightMm: 61,
+  },
+] as const satisfies readonly Case[]
 
 export const psus = [
   { id: 'psu-550', name: 'Corsair CX550', wattage: 550 },

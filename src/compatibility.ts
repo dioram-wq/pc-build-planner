@@ -81,6 +81,20 @@ export type Gpu = {
   id: string
   name: string
   boardPowerWatts: number
+  lengthMm: number
+}
+
+export type CpuCooler = {
+  id: string
+  name: string
+  heightMm: number
+}
+
+export type Case = {
+  id: string
+  name: string
+  maxGpuLengthMm: number
+  maxCoolerHeightMm: number
 }
 
 export type Psu = {
@@ -168,4 +182,69 @@ export function checkPowerSupply(
     recommendedWatts,
     issues: [],
   }
+}
+
+export type GpuLengthStatus = 'ok' | 'too-long' | 'skipped'
+
+export type CoolerHeightStatus = 'ok' | 'too-tall' | 'skipped'
+
+export type ClearanceIssue = {
+  code: 'gpu-too-long' | 'cooler-too-tall' | 'case-missing'
+  message: string
+}
+
+export type ClearanceCheck = {
+  gpuLength: GpuLengthStatus
+  coolerHeight: CoolerHeightStatus
+  issues: ClearanceIssue[]
+}
+
+export function checkCaseClearance(
+  pcCase: Case | null,
+  gpu: Gpu | null,
+  cooler: CpuCooler | null,
+): ClearanceCheck {
+  if (!pcCase) {
+    return {
+      gpuLength: 'skipped',
+      coolerHeight: 'skipped',
+      issues: [
+        {
+          code: 'case-missing',
+          message:
+            'Select a case to check graphics card length and cooler height.',
+        },
+      ],
+    }
+  }
+
+  const issues: ClearanceIssue[] = []
+  let gpuLength: GpuLengthStatus = 'skipped'
+  let coolerHeight: CoolerHeightStatus = 'skipped'
+
+  if (gpu) {
+    if (gpu.lengthMm > pcCase.maxGpuLengthMm) {
+      gpuLength = 'too-long'
+      issues.push({
+        code: 'gpu-too-long',
+        message: `${gpu.name} (${gpu.lengthMm}mm) is longer than ${pcCase.name} allows (${pcCase.maxGpuLengthMm}mm).`,
+      })
+    } else {
+      gpuLength = 'ok'
+    }
+  }
+
+  if (cooler) {
+    if (cooler.heightMm > pcCase.maxCoolerHeightMm) {
+      coolerHeight = 'too-tall'
+      issues.push({
+        code: 'cooler-too-tall',
+        message: `${cooler.name} (${cooler.heightMm}mm) is taller than ${pcCase.name} allows (${pcCase.maxCoolerHeightMm}mm).`,
+      })
+    } else {
+      coolerHeight = 'ok'
+    }
+  }
+
+  return { gpuLength, coolerHeight, issues }
 }

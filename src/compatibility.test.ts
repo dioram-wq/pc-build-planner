@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  checkCaseClearance,
   checkCpuSocket,
   checkMemoryType,
   checkPowerSupply,
+  type Case,
   type Cpu,
+  type CpuCooler,
   type CpuSocket,
   type Gpu,
   type Memory,
@@ -11,7 +14,15 @@ import {
   type Motherboard,
   type Psu,
 } from './compatibility.ts'
-import { cpus, gpus, memory, motherboards, psus } from './parts.ts'
+import {
+  cases,
+  coolers,
+  cpus,
+  gpus,
+  memory,
+  motherboards,
+  psus,
+} from './parts.ts'
 
 function cpu(
   socket: CpuSocket,
@@ -33,8 +44,29 @@ function kit(memoryType: MemoryType, name = 'Sample memory'): Memory {
   return { id: `mem-${memoryType}`, name, memoryType }
 }
 
-function card(boardPowerWatts: number, name = 'Sample GPU'): Gpu {
-  return { id: `gpu-${boardPowerWatts}`, name, boardPowerWatts }
+function card(
+  boardPowerWatts: number,
+  name = 'Sample GPU',
+  lengthMm = 240,
+): Gpu {
+  return { id: `gpu-${boardPowerWatts}`, name, boardPowerWatts, lengthMm }
+}
+
+function tower(heightMm: number, name = 'Sample cooler'): CpuCooler {
+  return { id: `cooler-${heightMm}`, name, heightMm }
+}
+
+function chassis(
+  maxGpuLengthMm: number,
+  maxCoolerHeightMm: number,
+  name = 'Sample case',
+): Case {
+  return {
+    id: `case-${maxGpuLengthMm}-${maxCoolerHeightMm}`,
+    name,
+    maxGpuLengthMm,
+    maxCoolerHeightMm,
+  }
 }
 
 function supply(wattage: number, name = 'Sample PSU'): Psu {
@@ -260,6 +292,194 @@ describe('checkPowerSupply', () => {
   })
 })
 
+describe('checkCaseClearance', () => {
+  const north = () => chassis(355, 170, 'Fractal Design North')
+
+  it('accepts a graphics card and cooler that fit inside the case', () => {
+    const result = checkCaseClearance(
+      north(),
+      card(115, 'NVIDIA GeForce RTX 4060', 240),
+      tower(70, 'Noctua NH-L12S'),
+    )
+
+    expect(result).toEqual({
+      gpuLength: 'ok',
+      coolerHeight: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts a card and cooler that match the case limits exactly', () => {
+    const result = checkCaseClearance(
+      north(),
+      card(115, 'Sample GPU', 355),
+      tower(170),
+    )
+
+    expect(result).toEqual({
+      gpuLength: 'ok',
+      coolerHeight: 'ok',
+      issues: [],
+    })
+  })
+
+  it('marks a graphics card too long and names both lengths', () => {
+    const result = checkCaseClearance(
+      chassis(330, 155, 'Cooler Master NR200P'),
+      card(450, 'NVIDIA GeForce RTX 4090', 336),
+      tower(70, 'Noctua NH-L12S'),
+    )
+
+    expect(result).toEqual({
+      gpuLength: 'too-long',
+      coolerHeight: 'ok',
+      issues: [
+        {
+          code: 'gpu-too-long',
+          message:
+            'NVIDIA GeForce RTX 4090 (336mm) is longer than Cooler Master NR200P allows (330mm).',
+        },
+      ],
+    })
+  })
+
+  it('marks a cooler too tall and names both heights', () => {
+    const result = checkCaseClearance(
+      chassis(330, 155, 'Cooler Master NR200P'),
+      card(115, 'NVIDIA GeForce RTX 4060', 240),
+      tower(165, 'Noctua NH-D15'),
+    )
+
+    expect(result).toEqual({
+      gpuLength: 'ok',
+      coolerHeight: 'too-tall',
+      issues: [
+        {
+          code: 'cooler-too-tall',
+          message:
+            'Noctua NH-D15 (165mm) is taller than Cooler Master NR200P allows (155mm).',
+        },
+      ],
+    })
+  })
+
+  it('reports both problems when the card is too long and the cooler is too tall', () => {
+    const result = checkCaseClearance(
+      chassis(270, 61, 'SilverStone SUGO SG13'),
+      card(450, 'NVIDIA GeForce RTX 4090', 304),
+      tower(165, 'Noctua NH-D15'),
+    )
+
+    expect(result).toEqual({
+      gpuLength: 'too-long',
+      coolerHeight: 'too-tall',
+      issues: [
+        {
+          code: 'gpu-too-long',
+          message:
+            'NVIDIA GeForce RTX 4090 (304mm) is longer than SilverStone SUGO SG13 allows (270mm).',
+        },
+        {
+          code: 'cooler-too-tall',
+          message:
+            'Noctua NH-D15 (165mm) is taller than SilverStone SUGO SG13 allows (61mm).',
+        },
+      ],
+    })
+  })
+
+  it('treats one millimetre over either limit as a miss', () => {
+    const result = checkCaseClearance(
+      chassis(330, 155),
+      card(200, 'Sample GPU', 331),
+      tower(156),
+    )
+
+    expect(result.gpuLength).toBe('too-long')
+    expect(result.coolerHeight).toBe('too-tall')
+    expect(result.issues.map((issue) => issue.code)).toEqual([
+      'gpu-too-long',
+      'cooler-too-tall',
+    ])
+  })
+
+  it('skips the graphics card check when no card is selected', () => {
+    const result = checkCaseClearance(
+      north(),
+      null,
+      tower(70, 'Noctua NH-L12S'),
+    )
+
+    expect(result).toEqual({
+      gpuLength: 'skipped',
+      coolerHeight: 'ok',
+      issues: [],
+    })
+  })
+
+  it('skips the graphics card check and still flags a cooler that is too tall', () => {
+    const result = checkCaseClearance(
+      chassis(330, 155, 'Cooler Master NR200P'),
+      null,
+      tower(165, 'Noctua NH-D15'),
+    )
+
+    expect(result.gpuLength).toBe('skipped')
+    expect(result.coolerHeight).toBe('too-tall')
+    expect(result.issues.map((issue) => issue.code)).toEqual([
+      'cooler-too-tall',
+    ])
+  })
+
+  it('skips the cooler check when no cooler is selected', () => {
+    const result = checkCaseClearance(
+      chassis(270, 61, 'SilverStone SUGO SG13'),
+      card(450, 'NVIDIA GeForce RTX 4090', 304),
+      null,
+    )
+
+    expect(result).toEqual({
+      gpuLength: 'too-long',
+      coolerHeight: 'skipped',
+      issues: [
+        {
+          code: 'gpu-too-long',
+          message:
+            'NVIDIA GeForce RTX 4090 (304mm) is longer than SilverStone SUGO SG13 allows (270mm).',
+        },
+      ],
+    })
+  })
+
+  it('skips both checks when no case is selected', () => {
+    const result = checkCaseClearance(
+      null,
+      card(450, 'NVIDIA GeForce RTX 4090', 304),
+      tower(165, 'Noctua NH-D15'),
+    )
+
+    expect(result).toEqual({
+      gpuLength: 'skipped',
+      coolerHeight: 'skipped',
+      issues: [
+        {
+          code: 'case-missing',
+          message:
+            'Select a case to check graphics card length and cooler height.',
+        },
+      ],
+    })
+  })
+
+  it('skips both checks when the case has no card or cooler to compare', () => {
+    expect(checkCaseClearance(north(), null, null)).toEqual({
+      gpuLength: 'skipped',
+      coolerHeight: 'skipped',
+      issues: [],
+    })
+  })
+})
+
 describe('sample catalog', () => {
   it('offers a motherboard for every CPU socket', () => {
     for (const part of cpus) {
@@ -308,5 +528,45 @@ describe('sample catalog', () => {
     expect(statuses.has('ok')).toBe(true)
     expect(statuses.has('tight')).toBe(true)
     expect(statuses.has('insufficient')).toBe(true)
+  })
+
+  it('records a length on every graphics card and limits on every case and cooler', () => {
+    for (const part of gpus) {
+      expect(part.lengthMm).toBeGreaterThan(0)
+    }
+    expect(coolers.length).toBeGreaterThan(0)
+    for (const part of coolers) {
+      expect(part.heightMm).toBeGreaterThan(0)
+    }
+    expect(cases.length).toBeGreaterThan(0)
+    for (const part of cases) {
+      expect(part.maxGpuLengthMm).toBeGreaterThan(0)
+      expect(part.maxCoolerHeightMm).toBeGreaterThan(0)
+    }
+  })
+
+  it('includes a case that fits, one the card is too long for, and one the cooler is too tall for', () => {
+    const cardPart = gpus.find((item) => item.id === 'gpu-4090')
+    const cooler = coolers.find((item) => item.id === 'cooler-nhd15')
+    if (!cardPart || !cooler) {
+      throw new Error('expected the RTX 4090 and NH-D15 in the catalog')
+    }
+
+    const results = cases.map((item) =>
+      checkCaseClearance(item, cardPart, cooler),
+    )
+
+    expect(
+      results.some(
+        (result) => result.gpuLength === 'ok' && result.coolerHeight === 'ok',
+      ),
+    ).toBe(true)
+    expect(results.some((result) => result.gpuLength === 'too-long')).toBe(true)
+    expect(
+      results.some(
+        (result) =>
+          result.coolerHeight === 'too-tall' && result.gpuLength === 'ok',
+      ),
+    ).toBe(true)
   })
 })
