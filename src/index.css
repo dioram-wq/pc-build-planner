@@ -52,34 +52,6 @@ h2 {
   font-size: 1.05rem;
 }
 
-.slots {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.slots li {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.7rem 0;
-  border-top: 1px solid #efe8dc;
-}
-
-.slots li:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.slot-label {
-  font-weight: 600;
-}
-
-.slot-value {
-  color: #78716c;
-  text-align: right;
-}
-
 .fields {
   display: grid;
   gap: 0.9rem;

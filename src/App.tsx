@@ -1,15 +1,26 @@
 import { useState } from 'react'
 import {
+  checkCaseClearance,
   checkCpuSocket,
   checkMemoryType,
   checkPowerSupply,
+  type Case,
   type Cpu,
+  type CpuCooler,
   type Gpu,
   type Memory,
   type Motherboard,
   type Psu,
 } from './compatibility.ts'
-import { cpus, gpus, laterChecks, memory, motherboards, psus } from './parts.ts'
+import {
+  cases,
+  coolers,
+  cpus,
+  gpus,
+  memory,
+  motherboards,
+  psus,
+} from './parts.ts'
 
 function findPart<T extends { id: string }>(parts: readonly T[], id: string): T {
   const part = parts.find((item) => item.id === id)
@@ -118,16 +129,92 @@ function PowerSupplyStatus({
   )
 }
 
+function ClearanceStatus({
+  pcCase,
+  gpu,
+  cooler,
+}: {
+  pcCase: Case | null
+  gpu: Gpu | null
+  cooler: CpuCooler | null
+}) {
+  const result = checkCaseClearance(pcCase, gpu, cooler)
+  const fits =
+    result.issues.length === 0 &&
+    (result.gpuLength === 'ok' || result.coolerHeight === 'ok')
+
+  if (fits && pcCase) {
+    const sentences: string[] = []
+    if (result.gpuLength === 'ok' && gpu) {
+      sentences.push(
+        `${gpu.name} (${gpu.lengthMm}mm) fits ${pcCase.name} (${pcCase.maxGpuLengthMm}mm).`,
+      )
+    }
+    if (result.coolerHeight === 'ok' && cooler) {
+      sentences.push(
+        `${cooler.name} (${cooler.heightMm}mm) fits the ${pcCase.maxCoolerHeightMm}mm cooler limit.`,
+      )
+    }
+
+    return (
+      <p className="status ok" role="status">
+        {sentences.join(' ')}
+      </p>
+    )
+  }
+
+  if (result.issues.length === 0 && pcCase) {
+    return (
+      <div className="status missing" role="status">
+        <p>Nothing selected to check.</p>
+        <ul>
+          <li>
+            {`Select a graphics card or a CPU cooler to check clearance in ${pcCase.name}.`}
+          </li>
+        </ul>
+      </div>
+    )
+  }
+
+  let heading = 'No case selected.'
+  let tone = 'missing'
+  if (result.gpuLength === 'too-long' && result.coolerHeight === 'too-tall') {
+    heading = 'Does not fit.'
+    tone = 'bad'
+  } else if (result.gpuLength === 'too-long') {
+    heading = 'Too long.'
+    tone = 'bad'
+  } else if (result.coolerHeight === 'too-tall') {
+    heading = 'Too tall.'
+    tone = 'bad'
+  }
+
+  return (
+    <div className={`status ${tone}`} role="status">
+      <p>{heading}</p>
+      <ul>
+        {result.issues.map((issue) => (
+          <li key={issue.code}>{issue.message}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export default function App() {
   const [cpuId, setCpuId] = useState<string>(cpus[0].id)
   const [motherboardId, setMotherboardId] = useState<string>(motherboards[0].id)
   const [memoryId, setMemoryId] = useState<string>(memory[0].id)
   const [gpuId, setGpuId] = useState<string>(gpus[0].id)
+  const [coolerId, setCoolerId] = useState<string>(coolers[0].id)
+  const [caseId, setCaseId] = useState<string>(cases[0].id)
   const [psuId, setPsuId] = useState<string>(psus[0].id)
   const cpu = findPart(cpus, cpuId)
   const motherboard = findPart(motherboards, motherboardId)
   const selectedMemory = findPart(memory, memoryId)
   const gpu = gpuId ? findPart(gpus, gpuId) : null
+  const cooler = coolerId ? findPart(coolers, coolerId) : null
+  const pcCase = caseId ? findPart(cases, caseId) : null
   const psu = psuId ? findPart(psus, psuId) : null
 
   return (
@@ -136,9 +223,11 @@ export default function App() {
         <p className="eyebrow">Parts desk</p>
         <h1>PC Build Planner</h1>
         <p className="lede">
-          Choose a processor, a motherboard, memory, a graphics card, and a
-          power supply. The planner checks that the CPU socket and the memory
-          type match the board, and that the supply covers the estimated draw.
+          Choose a processor, a motherboard, memory, a graphics card, a CPU
+          cooler, a case, and a power supply. The planner checks that the CPU
+          socket and the memory type match the board, that the supply covers
+          the estimated draw, and that the cooler and graphics card fit the
+          case.
         </p>
       </header>
 
@@ -205,7 +294,41 @@ export default function App() {
               <option value="">Integrated graphics</option>
               {gpus.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {part.name} · {part.boardPowerWatts}W
+                  {part.name} · {part.boardPowerWatts}W · {part.lengthMm}mm
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="cooler">CPU cooler</label>
+            <select
+              id="cooler"
+              value={coolerId}
+              onChange={(event) => {
+                setCoolerId(event.target.value)
+              }}
+            >
+              <option value="">No CPU cooler</option>
+              {coolers.map((part) => (
+                <option key={part.id} value={part.id}>
+                  {part.name} · {part.heightMm}mm
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="case">Case</label>
+            <select
+              id="case"
+              value={caseId}
+              onChange={(event) => {
+                setCaseId(event.target.value)
+              }}
+            >
+              <option value="">No case</option>
+              {cases.map((part) => (
+                <option key={part.id} value={part.id}>
+                  {`${part.name} · ${part.maxGpuLengthMm}mm GPU · ${part.maxCoolerHeightMm}mm cooler`}
                 </option>
               ))}
             </select>
@@ -231,18 +354,7 @@ export default function App() {
         <SocketStatus cpu={cpu} motherboard={motherboard} />
         <MemoryStatus memory={selectedMemory} motherboard={motherboard} />
         <PowerSupplyStatus cpu={cpu} gpu={gpu} psu={psu} />
-      </section>
-
-      <section className="panel" aria-labelledby="later-heading">
-        <h2 id="later-heading">Still to check</h2>
-        <ul className="slots">
-          {laterChecks.map((slot) => (
-            <li key={slot.id}>
-              <span className="slot-label">{slot.label}</span>
-              <span className="slot-value">{slot.note}</span>
-            </li>
-          ))}
-        </ul>
+        <ClearanceStatus pcCase={pcCase} gpu={gpu} cooler={cooler} />
       </section>
     </main>
   )

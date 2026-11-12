@@ -147,7 +147,3 @@ export const psus = [
   { id: 'psu-850', name: 'Corsair RM850x', wattage: 850 },
   { id: 'psu-1000', name: 'be quiet! Straight Power 12', wattage: 1000 },
 ] as const satisfies readonly Psu[]
-
-export const laterChecks = [
-  { id: 'case', label: 'Case', note: 'Cooler height and graphics card length' },
-] as const
