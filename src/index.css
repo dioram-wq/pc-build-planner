@@ -81,6 +81,15 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
+.total {
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.85rem;
+  background: #fff7ed;
+  color: #9a3412;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
 .status {
   margin: 1rem 0 0;
   padding: 0.75rem 0.85rem;

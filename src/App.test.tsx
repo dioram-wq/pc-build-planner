@@ -286,6 +286,39 @@ describe('App', () => {
     ).toBeTruthy()
   })
 
+  it('shows a running total of the selected sample prices', () => {
+    render(<App />)
+
+    expect(
+      screen.getByRole('option', {
+        name: 'AMD Ryzen 5 7600 · AM5 · $199',
+      }),
+    ).toBeTruthy()
+    expect(screen.getByText('Total $1,061')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Graphics card'), {
+      target: { value: 'gpu-4090' },
+    })
+
+    expect(screen.getByText('Total $2,361')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Graphics card'), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText('CPU cooler'), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText('Case'), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText('Power supply'), {
+      target: { value: '' },
+    })
+
+    expect(screen.getByText('Total $487')).toBeTruthy()
+    expect(screen.getByText('Compatible. Both parts use AM5.')).toBeTruthy()
+  })
+
   it('no longer lists case clearance as a later check', () => {
     render(<App />)
 

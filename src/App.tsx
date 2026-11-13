@@ -21,6 +21,7 @@ import {
   motherboards,
   psus,
 } from './parts.ts'
+import { formatUsd, totalPriceUsd } from './price.ts'
 
 function findPart<T extends { id: string }>(parts: readonly T[], id: string): T {
   const part = parts.find((item) => item.id === id)
@@ -216,6 +217,15 @@ export default function App() {
   const cooler = coolerId ? findPart(coolers, coolerId) : null
   const pcCase = caseId ? findPart(cases, caseId) : null
   const psu = psuId ? findPart(psus, psuId) : null
+  const totalUsd = totalPriceUsd([
+    cpu,
+    motherboard,
+    selectedMemory,
+    gpu,
+    cooler,
+    pcCase,
+    psu,
+  ])
 
   return (
     <main className="page">
@@ -227,7 +237,7 @@ export default function App() {
           cooler, a case, and a power supply. The planner checks that the CPU
           socket and the memory type match the board, that the supply covers
           the estimated draw, and that the cooler and graphics card fit the
-          case.
+          case. Sample prices for the selected parts are totaled below.
         </p>
       </header>
 
@@ -245,7 +255,7 @@ export default function App() {
             >
               {cpus.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {part.name} · {part.socket}
+                  {part.name} · {part.socket} · {formatUsd(part.priceUsd)}
                 </option>
               ))}
             </select>
@@ -261,7 +271,7 @@ export default function App() {
             >
               {motherboards.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {part.name} · {part.socket} · {part.memoryType}
+                  {`${part.name} · ${part.socket} · ${part.memoryType} · ${formatUsd(part.priceUsd)}`}
                 </option>
               ))}
             </select>
@@ -277,7 +287,7 @@ export default function App() {
             >
               {memory.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {part.name} · {part.memoryType}
+                  {part.name} · {part.memoryType} · {formatUsd(part.priceUsd)}
                 </option>
               ))}
             </select>
@@ -294,7 +304,7 @@ export default function App() {
               <option value="">Integrated graphics</option>
               {gpus.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {part.name} · {part.boardPowerWatts}W · {part.lengthMm}mm
+                  {`${part.name} · ${part.boardPowerWatts}W · ${part.lengthMm}mm · ${formatUsd(part.priceUsd)}`}
                 </option>
               ))}
             </select>
@@ -311,7 +321,7 @@ export default function App() {
               <option value="">No CPU cooler</option>
               {coolers.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {part.name} · {part.heightMm}mm
+                  {part.name} · {part.heightMm}mm · {formatUsd(part.priceUsd)}
                 </option>
               ))}
             </select>
@@ -328,7 +338,7 @@ export default function App() {
               <option value="">No case</option>
               {cases.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {`${part.name} · ${part.maxGpuLengthMm}mm GPU · ${part.maxCoolerHeightMm}mm cooler`}
+                  {`${part.name} · ${part.maxGpuLengthMm}mm GPU · ${part.maxCoolerHeightMm}mm cooler · ${formatUsd(part.priceUsd)}`}
                 </option>
               ))}
             </select>
@@ -345,12 +355,15 @@ export default function App() {
               <option value="">No power supply</option>
               {psus.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {part.name} · {part.wattage}W
+                  {part.name} · {part.wattage}W · {formatUsd(part.priceUsd)}
                 </option>
               ))}
             </select>
           </div>
         </div>
+        <p className="total" role="status">
+          {`Total ${formatUsd(totalUsd)}`}
+        </p>
         <SocketStatus cpu={cpu} motherboard={motherboard} />
         <MemoryStatus memory={selectedMemory} motherboard={motherboard} />
         <PowerSupplyStatus cpu={cpu} gpu={gpu} psu={psu} />

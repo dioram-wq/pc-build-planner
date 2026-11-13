@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/dioram-wq/pc-build-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/dioram-wq/pc-build-planner/actions/workflows/ci.yml)
 
-A small web app for picking desktop parts and checking that they fit.
+A small web app for picking desktop parts, checking that they fit, and totaling sample prices.
 
 ## Scripts
 
@@ -24,6 +24,10 @@ The planner currently checks four rules:
 - **Power supply wattage.** Estimated draw is the CPU TDP, plus graphics-card board power when a card is selected, plus 100W for the motherboard, memory, storage, and fans. The supply should cover that draw with about 25% headroom. Meeting the headroom is ok, covering the draw without that headroom is tight, and falling short of the draw is insufficient. With no supply selected, the planner still shows the estimate.
 - **Case clearance.** A graphics card has to be no longer than the case allows, and a CPU cooler no taller than the case allows. A card over that length is too long, and a cooler over that height is too tall. Matching a limit exactly is ok. With no case selected, the planner asks for one. If the card or the cooler is not selected, that comparison is skipped.
 
+## Price
+
+Every part in the sample catalog has a price in whole US dollars. The planner adds the prices of the parts that are selected. Leaving the graphics card, cooler, case, or power supply empty removes that part from the total.
+
 ## Roadmap
 
 - [x] Vite + React + TypeScript app, with Vitest
@@ -32,7 +36,7 @@ The planner currently checks four rules:
 - [x] Power supply wattage against estimated system draw
 - [x] Case clearance for cooler height and graphics card length
 - [x] CI on GitHub Actions
-- [ ] Running total price for the selected parts
+- [x] Running total price for the selected parts
 - [ ] Storage interface check (M.2 / SATA slots on the motherboard)
 - [ ] Save and share a build via the URL
 
