@@ -1,5 +1,7 @@
 # PC Build Planner
 
+[![CI](https://github.com/dioram-wq/pc-build-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/dioram-wq/pc-build-planner/actions/workflows/ci.yml)
+
 A small web app for picking desktop parts and checking that they fit.
 
 ## Scripts
@@ -29,6 +31,10 @@ The planner currently checks four rules:
 - [x] Memory type against the motherboard
 - [x] Power supply wattage against estimated system draw
 - [x] Case clearance for cooler height and graphics card length
+- [x] CI on GitHub Actions
+- [ ] Running total price for the selected parts
+- [ ] Storage interface check (M.2 / SATA slots on the motherboard)
+- [ ] Save and share a build via the URL
 
 ## Note
 
