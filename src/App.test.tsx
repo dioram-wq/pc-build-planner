@@ -28,6 +28,10 @@ describe('App', () => {
       'value',
       'psu-550',
     )
+    expect(screen.getByLabelText('Storage')).toHaveProperty(
+      'value',
+      'drive-sn770',
+    )
     expect(screen.getByText('Compatible. Both parts use AM5.')).toBeTruthy()
     expect(screen.getByText('Compatible. Both parts use DDR5.')).toBeTruthy()
     expect(
@@ -38,6 +42,11 @@ describe('App', () => {
     expect(
       screen.getByText(
         'NVIDIA GeForce RTX 4060 (240mm) fits Fractal Design North (355mm). Noctua NH-L12S (70mm) fits the 170mm cooler limit.',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(
+        'Compatible. WD Black SN770 1TB (M.2 NVMe) fits ASUS TUF Gaming B650-PLUS (3 M.2 slots).',
       ),
     ).toBeTruthy()
   })
@@ -294,13 +303,13 @@ describe('App', () => {
         name: 'AMD Ryzen 5 7600 · AM5 · $199',
       }),
     ).toBeTruthy()
-    expect(screen.getByText('Total $1,061')).toBeTruthy()
+    expect(screen.getByText('Total $1,131')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Graphics card'), {
       target: { value: 'gpu-4090' },
     })
 
-    expect(screen.getByText('Total $2,361')).toBeTruthy()
+    expect(screen.getByText('Total $2,431')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Graphics card'), {
       target: { value: '' },
@@ -315,7 +324,58 @@ describe('App', () => {
       target: { value: '' },
     })
 
+    expect(screen.getByText('Total $557')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Storage'), {
+      target: { value: '' },
+    })
+
     expect(screen.getByText('Total $487')).toBeTruthy()
+    expect(screen.getByText('Compatible. Both parts use AM5.')).toBeTruthy()
+  })
+
+  it('accepts a SATA drive when the motherboard has SATA ports', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Storage'), {
+      target: { value: 'drive-870evo' },
+    })
+
+    expect(
+      screen.getByText(
+        'Compatible. Samsung 870 EVO 1TB (SATA) fits ASUS TUF Gaming B650-PLUS (4 SATA ports).',
+      ),
+    ).toBeTruthy()
+    expect(screen.getByText('Total $1,151')).toBeTruthy()
+  })
+
+  it('uses the selected motherboard slot count in the storage check', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Motherboard'), {
+      target: { value: 'board-b550' },
+    })
+
+    expect(
+      screen.getByText(
+        'Compatible. WD Black SN770 1TB (M.2 NVMe) fits MSI MAG B550 Tomahawk (2 M.2 slots).',
+      ),
+    ).toBeTruthy()
+  })
+
+  it('asks for storage when no drive is selected', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Storage'), {
+      target: { value: '' },
+    })
+
+    expect(screen.getByText('No storage selected.')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'Select a drive to check its interface against the motherboard.',
+      ),
+    ).toBeTruthy()
     expect(screen.getByText('Compatible. Both parts use AM5.')).toBeTruthy()
   })
 

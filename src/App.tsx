@@ -4,6 +4,7 @@ import {
   checkCpuSocket,
   checkMemoryType,
   checkPowerSupply,
+  checkStorageInterface,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -11,6 +12,7 @@ import {
   type Memory,
   type Motherboard,
   type Psu,
+  type StorageDrive,
 } from './compatibility.ts'
 import {
   cases,
@@ -20,8 +22,22 @@ import {
   memory,
   motherboards,
   psus,
+  storage,
 } from './parts.ts'
 import { formatUsd, totalPriceUsd } from './price.ts'
+
+function storageSlotSummary(
+  drive: StorageDrive,
+  motherboard: Motherboard,
+): string {
+  if (drive.interface === 'M.2 NVMe') {
+    const count = motherboard.m2Slots
+    return `${count} M.2 ${count === 1 ? 'slot' : 'slots'}`
+  }
+
+  const count = motherboard.sataPorts
+  return `${count} SATA ${count === 1 ? 'port' : 'ports'}`
+}
 
 function findPart<T extends { id: string }>(parts: readonly T[], id: string): T {
   const part = parts.find((item) => item.id === id)
@@ -202,6 +218,42 @@ function ClearanceStatus({
   )
 }
 
+function StorageStatus({
+  drive,
+  motherboard,
+}: {
+  drive: StorageDrive | null
+  motherboard: Motherboard
+}) {
+  const result = checkStorageInterface(drive, motherboard)
+
+  if (result.status === 'ok' && drive) {
+    return (
+      <p className="status ok" role="status">
+        {`Compatible. ${drive.name} (${drive.interface}) fits ${motherboard.name} (${storageSlotSummary(drive, motherboard)}).`}
+      </p>
+    )
+  }
+
+  let heading = 'No storage selected.'
+  let tone = 'missing'
+  if (result.status === 'unsupported') {
+    heading = 'Unsupported.'
+    tone = 'bad'
+  }
+
+  return (
+    <div className={`status ${tone}`} role="status">
+      <p>{heading}</p>
+      <ul>
+        {result.issues.map((issue) => (
+          <li key={issue.code}>{issue.message}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export default function App() {
   const [cpuId, setCpuId] = useState<string>(cpus[0].id)
   const [motherboardId, setMotherboardId] = useState<string>(motherboards[0].id)
@@ -210,6 +262,7 @@ export default function App() {
   const [coolerId, setCoolerId] = useState<string>(coolers[0].id)
   const [caseId, setCaseId] = useState<string>(cases[0].id)
   const [psuId, setPsuId] = useState<string>(psus[0].id)
+  const [storageId, setStorageId] = useState<string>(storage[0].id)
   const cpu = findPart(cpus, cpuId)
   const motherboard = findPart(motherboards, motherboardId)
   const selectedMemory = findPart(memory, memoryId)
@@ -217,6 +270,7 @@ export default function App() {
   const cooler = coolerId ? findPart(coolers, coolerId) : null
   const pcCase = caseId ? findPart(cases, caseId) : null
   const psu = psuId ? findPart(psus, psuId) : null
+  const drive = storageId ? findPart(storage, storageId) : null
   const totalUsd = totalPriceUsd([
     cpu,
     motherboard,
@@ -225,6 +279,7 @@ export default function App() {
     cooler,
     pcCase,
     psu,
+    drive,
   ])
 
   return (
@@ -234,10 +289,11 @@ export default function App() {
         <h1>PC Build Planner</h1>
         <p className="lede">
           Choose a processor, a motherboard, memory, a graphics card, a CPU
-          cooler, a case, and a power supply. The planner checks that the CPU
-          socket and the memory type match the board, that the supply covers
-          the estimated draw, and that the cooler and graphics card fit the
-          case. Sample prices for the selected parts are totaled below.
+          cooler, a case, a power supply, and storage. The planner checks that
+          the CPU socket and the memory type match the board, that the supply
+          covers the estimated draw, that the cooler and graphics card fit the
+          case, and that the motherboard supports the drive interface. Sample
+          prices for the selected parts are totaled below.
         </p>
       </header>
 
@@ -271,7 +327,7 @@ export default function App() {
             >
               {motherboards.map((part) => (
                 <option key={part.id} value={part.id}>
-                  {`${part.name} · ${part.socket} · ${part.memoryType} · ${formatUsd(part.priceUsd)}`}
+                  {`${part.name} · ${part.socket} · ${part.memoryType} · ${part.m2Slots} M.2 · ${part.sataPorts} SATA · ${formatUsd(part.priceUsd)}`}
                 </option>
               ))}
             </select>
@@ -360,6 +416,23 @@ export default function App() {
               ))}
             </select>
           </div>
+          <div className="field">
+            <label htmlFor="storage">Storage</label>
+            <select
+              id="storage"
+              value={storageId}
+              onChange={(event) => {
+                setStorageId(event.target.value)
+              }}
+            >
+              <option value="">No storage</option>
+              {storage.map((part) => (
+                <option key={part.id} value={part.id}>
+                  {part.name} · {part.interface} · {formatUsd(part.priceUsd)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <p className="total" role="status">
           {`Total ${formatUsd(totalUsd)}`}
@@ -368,6 +441,7 @@ export default function App() {
         <MemoryStatus memory={selectedMemory} motherboard={motherboard} />
         <PowerSupplyStatus cpu={cpu} gpu={gpu} psu={psu} />
         <ClearanceStatus pcCase={pcCase} gpu={gpu} cooler={cooler} />
+        <StorageStatus drive={drive} motherboard={motherboard} />
       </section>
     </main>
   )

@@ -48,16 +48,29 @@ describe('totalPriceUsd', () => {
     const cooler = coolers.find((part) => part.id === 'cooler-l12s')
     const pcCase = cases.find((part) => part.id === 'case-north')
     const psu = psus.find((part) => part.id === 'psu-550')
-    if (!cpu || !motherboard || !kit || !gpu || !cooler || !pcCase || !psu) {
+    const drive = storage.find((part) => part.id === 'drive-sn770')
+    if (
+      !cpu ||
+      !motherboard ||
+      !kit ||
+      !gpu ||
+      !cooler ||
+      !pcCase ||
+      !psu ||
+      !drive
+    ) {
       throw new Error('expected the default planner parts in the catalog')
     }
 
-    expect(totalPriceUsd([cpu, motherboard, kit, gpu, cooler, pcCase, psu])).toBe(
-      1061,
-    )
-    expect(totalPriceUsd([cpu, motherboard, kit, null, null, null, null])).toBe(
-      487,
-    )
+    expect(
+      totalPriceUsd([cpu, motherboard, kit, gpu, cooler, pcCase, psu, drive]),
+    ).toBe(1131)
+    expect(
+      totalPriceUsd([cpu, motherboard, kit, null, null, null, null, drive]),
+    ).toBe(557)
+    expect(
+      totalPriceUsd([cpu, motherboard, kit, null, null, null, null, null]),
+    ).toBe(487)
   })
 })
 
