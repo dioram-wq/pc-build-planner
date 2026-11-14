@@ -17,16 +17,17 @@ Node.js 22 and npm 11 install cleanly. npm 10 can fail while resolving Vitest's 
 
 ## Compatibility
 
-The planner currently checks four rules:
+The planner currently checks five rules:
 
 - **CPU socket.** The processor socket must match the motherboard socket. The sample catalog covers AM4, AM5, LGA1700, and LGA1851.
 - **Memory type.** The memory type must match the type the motherboard takes. The sample catalog covers DDR4 and DDR5.
 - **Power supply wattage.** Estimated draw is the CPU TDP, plus graphics-card board power when a card is selected, plus 100W for the motherboard, memory, storage, and fans. The supply should cover that draw with about 25% headroom. Meeting the headroom is ok, covering the draw without that headroom is tight, and falling short of the draw is insufficient. With no supply selected, the planner still shows the estimate.
 - **Case clearance.** A graphics card has to be no longer than the case allows, and a CPU cooler no taller than the case allows. A card over that length is too long, and a cooler over that height is too tall. Matching a limit exactly is ok. With no case selected, the planner asks for one. If the card or the cooler is not selected, that comparison is skipped.
+- **Storage interface.** An M.2 NVMe drive needs at least one M.2 slot on the motherboard, and a SATA drive needs at least one SATA port. With no drive selected, the planner asks for one. The sample catalog covers both interfaces.
 
 ## Price
 
-Every part in the sample catalog has a price in whole US dollars. The planner adds the prices of the parts that are selected. Leaving the graphics card, cooler, case, or power supply empty removes that part from the total.
+Every part in the sample catalog has a price in whole US dollars. The planner adds the prices of the parts that are selected. Leaving the graphics card, cooler, case, power supply, or storage empty removes that part from the total.
 
 ## Roadmap
 
@@ -37,7 +38,7 @@ Every part in the sample catalog has a price in whole US dollars. The planner ad
 - [x] Case clearance for cooler height and graphics card length
 - [x] CI on GitHub Actions
 - [x] Running total price for the selected parts
-- [ ] Storage interface check (M.2 / SATA slots on the motherboard)
+- [x] Storage interface check (M.2 / SATA slots on the motherboard)
 - [ ] Save and share a build via the URL
 
 ## Note
