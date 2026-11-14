@@ -7,6 +7,7 @@ import {
   memory,
   motherboards,
   psus,
+  storage,
 } from './parts.ts'
 import { formatUsd, totalPriceUsd } from './price.ts'
 
@@ -18,6 +19,7 @@ const catalog = [
   ...coolers,
   ...cases,
   ...psus,
+  ...storage,
 ]
 
 describe('totalPriceUsd', () => {

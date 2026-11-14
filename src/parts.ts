@@ -6,6 +6,7 @@ import type {
   Memory,
   Motherboard,
   Psu,
+  StorageDrive,
 } from './compatibility.ts'
 
 type Priced<Part> = Part & { priceUsd: number }
@@ -47,6 +48,8 @@ export const motherboards = [
     name: 'ASUS TUF Gaming B650-PLUS',
     socket: 'AM5',
     memoryType: 'DDR5',
+    m2Slots: 3,
+    sataPorts: 4,
     priceUsd: 179,
   },
   {
@@ -54,6 +57,8 @@ export const motherboards = [
     name: 'MSI MAG B550 Tomahawk',
     socket: 'AM4',
     memoryType: 'DDR4',
+    m2Slots: 2,
+    sataPorts: 6,
     priceUsd: 149,
   },
   {
@@ -61,6 +66,8 @@ export const motherboards = [
     name: 'Gigabyte Z790 Aorus Elite',
     socket: 'LGA1700',
     memoryType: 'DDR5',
+    m2Slots: 4,
+    sataPorts: 6,
     priceUsd: 229,
   },
   {
@@ -68,6 +75,8 @@ export const motherboards = [
     name: 'ASUS ROG Strix Z890-F',
     socket: 'LGA1851',
     memoryType: 'DDR5',
+    m2Slots: 5,
+    sataPorts: 4,
     priceUsd: 399,
   },
 ] as const satisfies readonly Priced<Motherboard>[]
@@ -190,3 +199,30 @@ export const psus = [
     priceUsd: 180,
   },
 ] as const satisfies readonly Priced<Psu>[]
+
+export const storage = [
+  {
+    id: 'drive-sn770',
+    name: 'WD Black SN770 1TB',
+    interface: 'M.2 NVMe',
+    priceUsd: 70,
+  },
+  {
+    id: 'drive-990pro',
+    name: 'Samsung 990 Pro 2TB',
+    interface: 'M.2 NVMe',
+    priceUsd: 180,
+  },
+  {
+    id: 'drive-870evo',
+    name: 'Samsung 870 EVO 1TB',
+    interface: 'SATA',
+    priceUsd: 90,
+  },
+  {
+    id: 'drive-mx500',
+    name: 'Crucial MX500 1TB',
+    interface: 'SATA',
+    priceUsd: 65,
+  },
+] as const satisfies readonly Priced<StorageDrive>[]

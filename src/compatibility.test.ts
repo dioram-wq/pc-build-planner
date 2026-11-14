@@ -4,6 +4,7 @@ import {
   checkCpuSocket,
   checkMemoryType,
   checkPowerSupply,
+  checkStorageInterface,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -13,6 +14,8 @@ import {
   type MemoryType,
   type Motherboard,
   type Psu,
+  type StorageDrive,
+  type StorageInterface,
 } from './compatibility.ts'
 import {
   cases,
@@ -22,6 +25,7 @@ import {
   memory,
   motherboards,
   psus,
+  storage,
 } from './parts.ts'
 
 function cpu(
@@ -36,8 +40,17 @@ function board(
   socket: CpuSocket,
   name = 'Sample motherboard',
   memoryType: MemoryType = 'DDR5',
+  m2Slots = 2,
+  sataPorts = 4,
 ): Motherboard {
-  return { id: `board-${socket}`, name, socket, memoryType }
+  return {
+    id: `board-${socket}`,
+    name,
+    socket,
+    memoryType,
+    m2Slots,
+    sataPorts,
+  }
 }
 
 function kit(memoryType: MemoryType, name = 'Sample memory'): Memory {
@@ -71,6 +84,13 @@ function chassis(
 
 function supply(wattage: number, name = 'Sample PSU'): Psu {
   return { id: `psu-${wattage}`, name, wattage }
+}
+
+function drive(
+  storageInterface: StorageInterface,
+  name = 'Sample drive',
+): StorageDrive {
+  return { id: 'drive-sample', name, interface: storageInterface }
 }
 
 describe('checkCpuSocket', () => {
@@ -480,6 +500,95 @@ describe('checkCaseClearance', () => {
   })
 })
 
+describe('checkStorageInterface', () => {
+  it('accepts an M.2 NVMe drive when the motherboard has an M.2 slot', () => {
+    const result = checkStorageInterface(
+      drive('M.2 NVMe', 'WD Black SN770 1TB'),
+      board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 3, 4),
+    )
+
+    expect(result).toEqual({ status: 'ok', issues: [] })
+  })
+
+  it('accepts a SATA drive when the motherboard has a SATA port', () => {
+    const result = checkStorageInterface(
+      drive('SATA', 'Samsung 870 EVO 1TB'),
+      board('AM4', 'MSI MAG B550 Tomahawk', 'DDR4', 2, 6),
+    )
+
+    expect(result).toEqual({ status: 'ok', issues: [] })
+  })
+
+  it('accepts a drive when the motherboard has exactly one matching slot', () => {
+    expect(
+      checkStorageInterface(
+        drive('M.2 NVMe'),
+        board('AM5', 'Sample motherboard', 'DDR5', 1, 0),
+      ).status,
+    ).toBe('ok')
+    expect(
+      checkStorageInterface(
+        drive('SATA'),
+        board('AM5', 'Sample motherboard', 'DDR5', 0, 1),
+      ).status,
+    ).toBe('ok')
+  })
+
+  it('rejects an M.2 NVMe drive when the motherboard has no M.2 slots', () => {
+    const result = checkStorageInterface(
+      drive('M.2 NVMe', 'WD Black SN770 1TB'),
+      board('AM5', 'Sample motherboard', 'DDR5', 0, 6),
+    )
+
+    expect(result).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'storage-unsupported',
+          message:
+            'WD Black SN770 1TB (M.2 NVMe) does not fit Sample motherboard (0 M.2 slots).',
+        },
+      ],
+    })
+  })
+
+  it('rejects a SATA drive when the motherboard has no SATA ports', () => {
+    const result = checkStorageInterface(
+      drive('SATA', 'Samsung 870 EVO 1TB'),
+      board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 3, 0),
+    )
+
+    expect(result).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'storage-unsupported',
+          message:
+            'Samsung 870 EVO 1TB (SATA) does not fit ASUS TUF Gaming B650-PLUS (0 SATA ports).',
+        },
+      ],
+    })
+  })
+
+  it('reports a missing drive when none is selected', () => {
+    const result = checkStorageInterface(
+      null,
+      board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 3, 4),
+    )
+
+    expect(result).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'storage-missing',
+          message:
+            'Select a drive to check its interface against the motherboard.',
+        },
+      ],
+    })
+  })
+})
+
 describe('sample catalog', () => {
   it('offers a motherboard for every CPU socket', () => {
     for (const part of cpus) {
@@ -568,5 +677,36 @@ describe('sample catalog', () => {
           result.coolerHeight === 'too-tall' && result.gpuLength === 'ok',
       ),
     ).toBe(true)
+  })
+
+  it('records an interface on every drive and slot counts on every motherboard', () => {
+    const interfaces = ['M.2 NVMe', 'SATA'] as const
+
+    expect(storage.length).toBeGreaterThan(0)
+    for (const part of storage) {
+      expect(interfaces).toContain(part.interface)
+    }
+    for (const storageInterface of interfaces) {
+      expect(storage.some((part) => part.interface === storageInterface)).toBe(
+        true,
+      )
+    }
+
+    for (const part of motherboards) {
+      expect(Number.isInteger(part.m2Slots)).toBe(true)
+      expect(Number.isInteger(part.sataPorts)).toBe(true)
+      expect(part.m2Slots).toBeGreaterThan(0)
+      expect(part.sataPorts).toBeGreaterThan(0)
+    }
+  })
+
+  it('pairs every sample drive with a motherboard that supports it', () => {
+    for (const part of storage) {
+      expect(
+        motherboards.some(
+          (item) => checkStorageInterface(part, item).status === 'ok',
+        ),
+      ).toBe(true)
+    }
   })
 })

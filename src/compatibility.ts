@@ -14,6 +14,8 @@ export type Motherboard = {
   name: string
   socket: CpuSocket
   memoryType: MemoryType
+  m2Slots: number
+  sataPorts: number
 }
 
 export type Memory = {
@@ -247,4 +249,61 @@ export function checkCaseClearance(
   }
 
   return { gpuLength, coolerHeight, issues }
+}
+
+export type StorageInterface = 'M.2 NVMe' | 'SATA'
+
+export type StorageDrive = {
+  id: string
+  name: string
+  interface: StorageInterface
+}
+
+export type StorageStatus = 'ok' | 'unsupported' | 'missing'
+
+export type StorageIssue = {
+  code: 'storage-unsupported' | 'storage-missing'
+  message: string
+}
+
+export type StorageCheck = {
+  status: StorageStatus
+  issues: StorageIssue[]
+}
+
+export function checkStorageInterface(
+  drive: StorageDrive | null,
+  motherboard: Motherboard,
+): StorageCheck {
+  if (!drive) {
+    return {
+      status: 'missing',
+      issues: [
+        {
+          code: 'storage-missing',
+          message:
+            'Select a drive to check its interface against the motherboard.',
+        },
+      ],
+    }
+  }
+
+  const slots =
+    drive.interface === 'M.2 NVMe' ? motherboard.m2Slots : motherboard.sataPorts
+
+  if (slots > 0) {
+    return { status: 'ok', issues: [] }
+  }
+
+  const slotLabel = drive.interface === 'M.2 NVMe' ? 'M.2 slots' : 'SATA ports'
+
+  return {
+    status: 'unsupported',
+    issues: [
+      {
+        code: 'storage-unsupported',
+        message: `${drive.name} (${drive.interface}) does not fit ${motherboard.name} (${slots} ${slotLabel}).`,
+      },
+    ],
+  }
 }
