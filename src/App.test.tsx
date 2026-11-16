@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import App from './App.tsx'
 
 describe('App', () => {
@@ -377,6 +377,191 @@ describe('App', () => {
       ),
     ).toBeTruthy()
     expect(screen.getByText('Compatible. Both parts use AM5.')).toBeTruthy()
+  })
+
+  it('writes the selected parts into the query string', () => {
+    render(<App />)
+
+    expect(window.location.search).toContain('c=cpu-7600')
+    expect(window.location.search).toContain('g=gpu-4060')
+    expect(window.location.hash).toBe('')
+
+    fireEvent.change(screen.getByLabelText('Graphics card'), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText('Storage'), {
+      target: { value: 'drive-870evo' },
+    })
+
+    expect(window.location.search).not.toContain('g=')
+    expect(window.location.search).toContain('d=drive-870evo')
+    expect(window.location.search).toContain('c=cpu-7600')
+  })
+
+  it('restores a shared build from the query string', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?c=cpu-5800x&b=board-b550&m=mem-ddr4-3200&g=gpu-7800xt&h=cooler-nhd15&e=case-lancool&p=psu-850&d=drive-870evo',
+    )
+
+    render(<App />)
+
+    expect(screen.getByLabelText('CPU')).toHaveProperty('value', 'cpu-5800x')
+    expect(screen.getByLabelText('Motherboard')).toHaveProperty(
+      'value',
+      'board-b550',
+    )
+    expect(screen.getByLabelText('Memory')).toHaveProperty(
+      'value',
+      'mem-ddr4-3200',
+    )
+    expect(screen.getByLabelText('Graphics card')).toHaveProperty(
+      'value',
+      'gpu-7800xt',
+    )
+    expect(screen.getByLabelText('CPU cooler')).toHaveProperty(
+      'value',
+      'cooler-nhd15',
+    )
+    expect(screen.getByLabelText('Case')).toHaveProperty(
+      'value',
+      'case-lancool',
+    )
+    expect(screen.getByLabelText('Power supply')).toHaveProperty(
+      'value',
+      'psu-850',
+    )
+    expect(screen.getByLabelText('Storage')).toHaveProperty(
+      'value',
+      'drive-870evo',
+    )
+    expect(screen.getByText('Compatible. Both parts use AM4.')).toBeTruthy()
+    expect(screen.getByText('Compatible. Both parts use DDR4.')).toBeTruthy()
+  })
+
+  it('restores a shared build from the hash and canonicalizes it to the query', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/#c=cpu-265k&b=board-z890&m=mem-ddr5-5600',
+    )
+
+    render(<App />)
+
+    expect(screen.getByLabelText('CPU')).toHaveProperty('value', 'cpu-265k')
+    expect(screen.getByLabelText('Motherboard')).toHaveProperty(
+      'value',
+      'board-z890',
+    )
+    expect(screen.getByLabelText('Memory')).toHaveProperty(
+      'value',
+      'mem-ddr5-5600',
+    )
+    expect(screen.getByLabelText('Graphics card')).toHaveProperty('value', '')
+    expect(screen.getByLabelText('CPU cooler')).toHaveProperty('value', '')
+    expect(screen.getByLabelText('Case')).toHaveProperty('value', '')
+    expect(screen.getByLabelText('Power supply')).toHaveProperty('value', '')
+    expect(screen.getByLabelText('Storage')).toHaveProperty('value', '')
+    expect(screen.getByText('Compatible. Both parts use LGA1851.')).toBeTruthy()
+    expect(window.location.hash).toBe('')
+    expect(window.location.search).toContain('c=cpu-265k')
+    expect(window.location.search).toContain('b=board-z890')
+    expect(window.location.search).not.toContain('g=')
+  })
+
+  it('ignores unknown part ids in a shared link', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?c=cpu-nope&b=board-z790&g=not-a-gpu&d=drive-mx500&x=case-north',
+    )
+
+    render(<App />)
+
+    expect(screen.getByLabelText('CPU')).toHaveProperty('value', 'cpu-7600')
+    expect(screen.getByLabelText('Motherboard')).toHaveProperty(
+      'value',
+      'board-z790',
+    )
+    expect(screen.getByLabelText('Graphics card')).toHaveProperty('value', '')
+    expect(screen.getByLabelText('Case')).toHaveProperty('value', '')
+    expect(screen.getByLabelText('Storage')).toHaveProperty(
+      'value',
+      'drive-mx500',
+    )
+  })
+
+  it('keeps the starter build when the shared link is malformed', () => {
+    window.history.replaceState(null, '', '/?%%%')
+
+    render(<App />)
+
+    expect(screen.getByLabelText('CPU')).toHaveProperty('value', 'cpu-7600')
+    expect(screen.getByLabelText('Graphics card')).toHaveProperty(
+      'value',
+      'gpu-4060',
+    )
+    expect(screen.getByText('Total $1,131')).toBeTruthy()
+  })
+
+  it('round-trips a changed build through the address bar', () => {
+    const view = render(<App />)
+
+    fireEvent.change(screen.getByLabelText('CPU'), {
+      target: { value: 'cpu-265k' },
+    })
+    fireEvent.change(screen.getByLabelText('Motherboard'), {
+      target: { value: 'board-z890' },
+    })
+    fireEvent.change(screen.getByLabelText('Graphics card'), {
+      target: { value: '' },
+    })
+
+    const search = window.location.search
+    view.unmount()
+    window.history.replaceState(null, '', `/${search}`)
+    render(<App />)
+
+    expect(screen.getByLabelText('CPU')).toHaveProperty('value', 'cpu-265k')
+    expect(screen.getByLabelText('Motherboard')).toHaveProperty(
+      'value',
+      'board-z890',
+    )
+    expect(screen.getByLabelText('Graphics card')).toHaveProperty('value', '')
+    expect(screen.getByText('Compatible. Both parts use LGA1851.')).toBeTruthy()
+  })
+
+  it('copies the current build link', async () => {
+    const writeText = vi.fn<(href: string) => Promise<void>>(() =>
+      Promise.resolve(),
+    )
+    const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
+
+    try {
+      render(<App />)
+      fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+
+      expect(await screen.findByText('Link copied')).toBeTruthy()
+      expect(writeText).toHaveBeenCalledOnce()
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringContaining('c=cpu-7600'),
+      )
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringContaining('d=drive-sn770'),
+      )
+      expect(window.location.search).toContain('c=cpu-7600')
+    } finally {
+      if (original) {
+        Object.defineProperty(navigator, 'clipboard', original)
+      } else {
+        Reflect.deleteProperty(navigator, 'clipboard')
+      }
+    }
   })
 
   it('no longer lists case clearance as a later check', () => {
