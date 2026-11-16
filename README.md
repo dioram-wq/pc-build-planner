@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/dioram-wq/pc-build-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/dioram-wq/pc-build-planner/actions/workflows/ci.yml)
 
-A small web app for picking desktop parts, checking that they fit, and totaling sample prices.
+A small web app for picking desktop parts, checking that they fit, totaling sample prices, and sharing the build with a link.
 
 ## Scripts
 
@@ -29,6 +29,10 @@ The planner currently checks five rules:
 
 Every part in the sample catalog has a price in whole US dollars. The planner adds the prices of the parts that are selected. Leaving the graphics card, cooler, case, power supply, or storage empty removes that part from the total.
 
+## Sharing
+
+The address bar stores the selected part IDs in a short query string. Changing a part updates that link in place, and opening it later restores the same build. IDs the catalog does not know are left out. A graphics card, cooler, case, power supply, or drive that was left empty stays empty. The Copy link button copies the current address.
+
 ## Roadmap
 
 - [x] Vite + React + TypeScript app, with Vitest
@@ -39,7 +43,8 @@ Every part in the sample catalog has a price in whole US dollars. The planner ad
 - [x] CI on GitHub Actions
 - [x] Running total price for the selected parts
 - [x] Storage interface check (M.2 / SATA slots on the motherboard)
-- [ ] Save and share a build via the URL
+- [x] Save and share a build via the URL
+- [ ] Refresh sample part prices from a data file
 
 ## Note
 
