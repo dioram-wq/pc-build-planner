@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   checkCaseClearance,
   checkCpuSocket,
@@ -25,6 +25,13 @@ import {
   storage,
 } from './parts.ts'
 import { formatUsd, totalPriceUsd } from './price.ts'
+import {
+  decodeBuild,
+  encodeBuild,
+  isEmptyBuild,
+  type BuildCatalog,
+  type BuildSelection,
+} from './share/buildUrl.ts'
 
 function storageSlotSummary(
   drive: StorageDrive,
@@ -37,6 +44,59 @@ function storageSlotSummary(
 
   const count = motherboard.sataPorts
   return `${count} SATA ${count === 1 ? 'port' : 'ports'}`
+}
+
+function partIds<T extends { id: string }>(
+  parts: readonly T[],
+): readonly string[] {
+  return parts.map((part) => part.id)
+}
+
+const buildCatalog: BuildCatalog = {
+  cpu: partIds(cpus),
+  motherboard: partIds(motherboards),
+  memory: partIds(memory),
+  gpu: partIds(gpus),
+  cooler: partIds(coolers),
+  case: partIds(cases),
+  psu: partIds(psus),
+  storage: partIds(storage),
+}
+
+const defaultBuild: BuildSelection = {
+  cpu: cpus[0].id,
+  motherboard: motherboards[0].id,
+  memory: memory[0].id,
+  gpu: gpus[0].id,
+  cooler: coolers[0].id,
+  case: cases[0].id,
+  psu: psus[0].id,
+  storage: storage[0].id,
+}
+
+function locationSource(): string {
+  if (window.location.search.length > 1) return window.location.search
+  if (window.location.hash.length > 1) return window.location.hash
+  return ''
+}
+
+function selectionFromLocation(): BuildSelection {
+  const source = locationSource()
+  if (!source) return defaultBuild
+
+  const decoded = decodeBuild(source, buildCatalog)
+  if (isEmptyBuild(decoded)) return defaultBuild
+
+  return {
+    cpu: decoded.cpu || defaultBuild.cpu,
+    motherboard: decoded.motherboard || defaultBuild.motherboard,
+    memory: decoded.memory || defaultBuild.memory,
+    gpu: decoded.gpu,
+    cooler: decoded.cooler,
+    case: decoded.case,
+    psu: decoded.psu,
+    storage: decoded.storage,
+  }
 }
 
 function findPart<T extends { id: string }>(parts: readonly T[], id: string): T {
@@ -255,22 +315,16 @@ function StorageStatus({
 }
 
 export default function App() {
-  const [cpuId, setCpuId] = useState<string>(cpus[0].id)
-  const [motherboardId, setMotherboardId] = useState<string>(motherboards[0].id)
-  const [memoryId, setMemoryId] = useState<string>(memory[0].id)
-  const [gpuId, setGpuId] = useState<string>(gpus[0].id)
-  const [coolerId, setCoolerId] = useState<string>(coolers[0].id)
-  const [caseId, setCaseId] = useState<string>(cases[0].id)
-  const [psuId, setPsuId] = useState<string>(psus[0].id)
-  const [storageId, setStorageId] = useState<string>(storage[0].id)
-  const cpu = findPart(cpus, cpuId)
-  const motherboard = findPart(motherboards, motherboardId)
-  const selectedMemory = findPart(memory, memoryId)
-  const gpu = gpuId ? findPart(gpus, gpuId) : null
-  const cooler = coolerId ? findPart(coolers, coolerId) : null
-  const pcCase = caseId ? findPart(cases, caseId) : null
-  const psu = psuId ? findPart(psus, psuId) : null
-  const drive = storageId ? findPart(storage, storageId) : null
+  const [build, setBuild] = useState(selectionFromLocation)
+  const [copyNote, setCopyNote] = useState('')
+  const cpu = findPart(cpus, build.cpu)
+  const motherboard = findPart(motherboards, build.motherboard)
+  const selectedMemory = findPart(memory, build.memory)
+  const gpu = build.gpu ? findPart(gpus, build.gpu) : null
+  const cooler = build.cooler ? findPart(coolers, build.cooler) : null
+  const pcCase = build.case ? findPart(cases, build.case) : null
+  const psu = build.psu ? findPart(psus, build.psu) : null
+  const drive = build.storage ? findPart(storage, build.storage) : null
   const totalUsd = totalPriceUsd([
     cpu,
     motherboard,
@@ -281,6 +335,50 @@ export default function App() {
     psu,
     drive,
   ])
+
+  useEffect(() => {
+    const encoded = encodeBuild(build)
+    const nextSearch = encoded ? `?${encoded}` : ''
+    if (window.location.search === nextSearch && window.location.hash === '') {
+      return
+    }
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${nextSearch}`,
+    )
+  }, [build])
+
+  function update(slot: keyof BuildSelection, value: string) {
+    setCopyNote('')
+    setBuild((current) => {
+      if (current[slot] === value) return current
+      return { ...current, [slot]: value }
+    })
+  }
+
+  function copyLink() {
+    const encoded = encodeBuild(build)
+    const url = new URL(window.location.href)
+    url.search = encoded
+    url.hash = ''
+    window.history.replaceState(null, '', `${url.pathname}${url.search}`)
+
+    const writeText = navigator.clipboard?.writeText
+    if (!writeText) {
+      setCopyNote('Could not copy the link')
+      return
+    }
+
+    void writeText.call(navigator.clipboard, url.toString()).then(
+      () => {
+        setCopyNote('Link copied')
+      },
+      () => {
+        setCopyNote('Could not copy the link')
+      },
+    )
+  }
 
   return (
     <main className="page">
@@ -293,20 +391,31 @@ export default function App() {
           the CPU socket and the memory type match the board, that the supply
           covers the estimated draw, that the cooler and graphics card fit the
           case, and that the motherboard supports the drive interface. Sample
-          prices for the selected parts are totaled below.
+          prices for the selected parts are totaled below. The address bar
+          keeps a link to this build.
         </p>
       </header>
 
       <section className="panel" aria-labelledby="build-heading">
-        <h2 id="build-heading">Build</h2>
+        <div className="panel-heading">
+          <h2 id="build-heading">Build</h2>
+          <button type="button" className="copy-link" onClick={copyLink}>
+            Copy link
+          </button>
+        </div>
+        {copyNote ? (
+          <p className="copy-note" role="status">
+            {copyNote}
+          </p>
+        ) : null}
         <div className="fields">
           <div className="field">
             <label htmlFor="cpu">CPU</label>
             <select
               id="cpu"
-              value={cpuId}
+              value={build.cpu}
               onChange={(event) => {
-                setCpuId(event.target.value)
+                update('cpu', event.target.value)
               }}
             >
               {cpus.map((part) => (
@@ -320,9 +429,9 @@ export default function App() {
             <label htmlFor="motherboard">Motherboard</label>
             <select
               id="motherboard"
-              value={motherboardId}
+              value={build.motherboard}
               onChange={(event) => {
-                setMotherboardId(event.target.value)
+                update('motherboard', event.target.value)
               }}
             >
               {motherboards.map((part) => (
@@ -336,9 +445,9 @@ export default function App() {
             <label htmlFor="memory">Memory</label>
             <select
               id="memory"
-              value={memoryId}
+              value={build.memory}
               onChange={(event) => {
-                setMemoryId(event.target.value)
+                update('memory', event.target.value)
               }}
             >
               {memory.map((part) => (
@@ -352,9 +461,9 @@ export default function App() {
             <label htmlFor="gpu">Graphics card</label>
             <select
               id="gpu"
-              value={gpuId}
+              value={build.gpu}
               onChange={(event) => {
-                setGpuId(event.target.value)
+                update('gpu', event.target.value)
               }}
             >
               <option value="">Integrated graphics</option>
@@ -369,9 +478,9 @@ export default function App() {
             <label htmlFor="cooler">CPU cooler</label>
             <select
               id="cooler"
-              value={coolerId}
+              value={build.cooler}
               onChange={(event) => {
-                setCoolerId(event.target.value)
+                update('cooler', event.target.value)
               }}
             >
               <option value="">No CPU cooler</option>
@@ -386,9 +495,9 @@ export default function App() {
             <label htmlFor="case">Case</label>
             <select
               id="case"
-              value={caseId}
+              value={build.case}
               onChange={(event) => {
-                setCaseId(event.target.value)
+                update('case', event.target.value)
               }}
             >
               <option value="">No case</option>
@@ -403,9 +512,9 @@ export default function App() {
             <label htmlFor="psu">Power supply</label>
             <select
               id="psu"
-              value={psuId}
+              value={build.psu}
               onChange={(event) => {
-                setPsuId(event.target.value)
+                update('psu', event.target.value)
               }}
             >
               <option value="">No power supply</option>
@@ -420,9 +529,9 @@ export default function App() {
             <label htmlFor="storage">Storage</label>
             <select
               id="storage"
-              value={storageId}
+              value={build.storage}
               onChange={(event) => {
-                setStorageId(event.target.value)
+                update('storage', event.target.value)
               }}
             >
               <option value="">No storage</option>
