@@ -8,41 +8,39 @@ import type {
   Psu,
   StorageDrive,
 } from './compatibility.ts'
+import { samplePricesUsd } from './data/prices.ts'
+import { applyPrices } from './price.ts'
 
-type Priced<Part> = Part & { priceUsd: number }
-
-export const cpus = [
+const cpuCatalog = [
   {
     id: 'cpu-7600',
     name: 'AMD Ryzen 5 7600',
     socket: 'AM5',
     tdpWatts: 65,
-    priceUsd: 199,
   },
   {
     id: 'cpu-5800x',
     name: 'AMD Ryzen 7 5800X',
     socket: 'AM4',
     tdpWatts: 105,
-    priceUsd: 189,
   },
   {
     id: 'cpu-14600k',
     name: 'Intel Core i5-14600K',
     socket: 'LGA1700',
     tdpWatts: 125,
-    priceUsd: 229,
   },
   {
     id: 'cpu-265k',
     name: 'Intel Core Ultra 7 265K',
     socket: 'LGA1851',
     tdpWatts: 125,
-    priceUsd: 379,
   },
-] as const satisfies readonly Priced<Cpu>[]
+] as const satisfies readonly Cpu[]
 
-export const motherboards = [
+export const cpus = applyPrices(cpuCatalog, samplePricesUsd)
+
+const motherboardCatalog = [
   {
     id: 'board-b650',
     name: 'ASUS TUF Gaming B650-PLUS',
@@ -50,7 +48,6 @@ export const motherboards = [
     memoryType: 'DDR5',
     m2Slots: 3,
     sataPorts: 4,
-    priceUsd: 179,
   },
   {
     id: 'board-b550',
@@ -59,7 +56,6 @@ export const motherboards = [
     memoryType: 'DDR4',
     m2Slots: 2,
     sataPorts: 6,
-    priceUsd: 149,
   },
   {
     id: 'board-z790',
@@ -68,7 +64,6 @@ export const motherboards = [
     memoryType: 'DDR5',
     m2Slots: 4,
     sataPorts: 6,
-    priceUsd: 229,
   },
   {
     id: 'board-z890',
@@ -77,152 +72,122 @@ export const motherboards = [
     memoryType: 'DDR5',
     m2Slots: 5,
     sataPorts: 4,
-    priceUsd: 399,
   },
-] as const satisfies readonly Priced<Motherboard>[]
+] as const satisfies readonly Motherboard[]
 
-export const memory = [
+export const motherboards = applyPrices(motherboardCatalog, samplePricesUsd)
+
+const memoryCatalog = [
   {
     id: 'mem-ddr5-6000',
     name: 'Corsair Vengeance 32GB DDR5-6000',
     memoryType: 'DDR5',
-    priceUsd: 109,
   },
   {
     id: 'mem-ddr5-5600',
     name: 'G.Skill Flare X5 32GB DDR5-5600',
     memoryType: 'DDR5',
-    priceUsd: 99,
   },
   {
     id: 'mem-ddr4-3600',
     name: 'Corsair Vengeance LPX 32GB DDR4-3600',
     memoryType: 'DDR4',
-    priceUsd: 69,
   },
   {
     id: 'mem-ddr4-3200',
     name: 'G.Skill Ripjaws V 32GB DDR4-3200',
     memoryType: 'DDR4',
-    priceUsd: 59,
   },
-] as const satisfies readonly Priced<Memory>[]
+] as const satisfies readonly Memory[]
 
-export const gpus = [
+export const memory = applyPrices(memoryCatalog, samplePricesUsd)
+
+const gpuCatalog = [
   {
     id: 'gpu-4060',
     name: 'NVIDIA GeForce RTX 4060',
     boardPowerWatts: 115,
     lengthMm: 240,
-    priceUsd: 299,
   },
   {
     id: 'gpu-4070',
     name: 'NVIDIA GeForce RTX 4070',
     boardPowerWatts: 200,
     lengthMm: 244,
-    priceUsd: 549,
   },
   {
     id: 'gpu-7800xt',
     name: 'AMD Radeon RX 7800 XT',
     boardPowerWatts: 263,
     lengthMm: 267,
-    priceUsd: 479,
   },
   {
     id: 'gpu-4090',
     name: 'NVIDIA GeForce RTX 4090',
     boardPowerWatts: 450,
     lengthMm: 304,
-    priceUsd: 1599,
   },
-] as const satisfies readonly Priced<Gpu>[]
+] as const satisfies readonly Gpu[]
 
-export const coolers = [
-  {
-    id: 'cooler-l12s',
-    name: 'Noctua NH-L12S',
-    heightMm: 70,
-    priceUsd: 70,
-  },
-  { id: 'cooler-l9a', name: 'Noctua NH-L9a', heightMm: 37, priceUsd: 45 },
+export const gpus = applyPrices(gpuCatalog, samplePricesUsd)
+
+const coolerCatalog = [
+  { id: 'cooler-l12s', name: 'Noctua NH-L12S', heightMm: 70 },
+  { id: 'cooler-l9a', name: 'Noctua NH-L9a', heightMm: 37 },
   {
     id: 'cooler-pa120',
     name: 'Thermalright Peerless Assassin 120',
     heightMm: 157,
-    priceUsd: 40,
   },
-  { id: 'cooler-nhd15', name: 'Noctua NH-D15', heightMm: 165, priceUsd: 110 },
-] as const satisfies readonly Priced<CpuCooler>[]
+  { id: 'cooler-nhd15', name: 'Noctua NH-D15', heightMm: 165 },
+] as const satisfies readonly CpuCooler[]
 
-export const cases = [
+export const coolers = applyPrices(coolerCatalog, samplePricesUsd)
+
+const caseCatalog = [
   {
     id: 'case-north',
     name: 'Fractal Design North',
     maxGpuLengthMm: 355,
     maxCoolerHeightMm: 170,
-    priceUsd: 140,
   },
   {
     id: 'case-lancool',
     name: 'Lian Li Lancool 216',
     maxGpuLengthMm: 392,
     maxCoolerHeightMm: 180,
-    priceUsd: 100,
   },
   {
     id: 'case-nr200',
     name: 'Cooler Master NR200P',
     maxGpuLengthMm: 330,
     maxCoolerHeightMm: 155,
-    priceUsd: 110,
   },
   {
     id: 'case-sg13',
     name: 'SilverStone SUGO SG13',
     maxGpuLengthMm: 270,
     maxCoolerHeightMm: 61,
-    priceUsd: 70,
   },
-] as const satisfies readonly Priced<Case>[]
+] as const satisfies readonly Case[]
 
-export const psus = [
-  { id: 'psu-550', name: 'Corsair CX550', wattage: 550, priceUsd: 65 },
-  { id: 'psu-650', name: 'Corsair RM650x', wattage: 650, priceUsd: 110 },
-  { id: 'psu-750', name: 'Seasonic Focus GX-750', wattage: 750, priceUsd: 120 },
-  { id: 'psu-850', name: 'Corsair RM850x', wattage: 850, priceUsd: 140 },
-  {
-    id: 'psu-1000',
-    name: 'be quiet! Straight Power 12',
-    wattage: 1000,
-    priceUsd: 180,
-  },
-] as const satisfies readonly Priced<Psu>[]
+export const cases = applyPrices(caseCatalog, samplePricesUsd)
 
-export const storage = [
-  {
-    id: 'drive-sn770',
-    name: 'WD Black SN770 1TB',
-    interface: 'M.2 NVMe',
-    priceUsd: 70,
-  },
-  {
-    id: 'drive-990pro',
-    name: 'Samsung 990 Pro 2TB',
-    interface: 'M.2 NVMe',
-    priceUsd: 180,
-  },
-  {
-    id: 'drive-870evo',
-    name: 'Samsung 870 EVO 1TB',
-    interface: 'SATA',
-    priceUsd: 90,
-  },
-  {
-    id: 'drive-mx500',
-    name: 'Crucial MX500 1TB',
-    interface: 'SATA',
-    priceUsd: 65,
-  },
-] as const satisfies readonly Priced<StorageDrive>[]
+const psuCatalog = [
+  { id: 'psu-550', name: 'Corsair CX550', wattage: 550 },
+  { id: 'psu-650', name: 'Corsair RM650x', wattage: 650 },
+  { id: 'psu-750', name: 'Seasonic Focus GX-750', wattage: 750 },
+  { id: 'psu-850', name: 'Corsair RM850x', wattage: 850 },
+  { id: 'psu-1000', name: 'be quiet! Straight Power 12', wattage: 1000 },
+] as const satisfies readonly Psu[]
+
+export const psus = applyPrices(psuCatalog, samplePricesUsd)
+
+const storageCatalog = [
+  { id: 'drive-sn770', name: 'WD Black SN770 1TB', interface: 'M.2 NVMe' },
+  { id: 'drive-990pro', name: 'Samsung 990 Pro 2TB', interface: 'M.2 NVMe' },
+  { id: 'drive-870evo', name: 'Samsung 870 EVO 1TB', interface: 'SATA' },
+  { id: 'drive-mx500', name: 'Crucial MX500 1TB', interface: 'SATA' },
+] as const satisfies readonly StorageDrive[]
+
+export const storage = applyPrices(storageCatalog, samplePricesUsd)

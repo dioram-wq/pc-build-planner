@@ -2,6 +2,16 @@ export type PricedPart = {
   priceUsd: number
 }
 
+export function applyPrices<T extends { id: string }>(
+  parts: readonly T[],
+  prices: Readonly<Record<string, number>>,
+): Array<T & PricedPart> {
+  return parts.map((part) => ({
+    ...part,
+    priceUsd: prices[part.id] ?? 0,
+  }))
+}
+
 export function totalPriceUsd(
   parts: readonly (PricedPart | null | undefined)[],
 ): number {
