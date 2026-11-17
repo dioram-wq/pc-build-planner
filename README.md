@@ -27,7 +27,7 @@ The planner currently checks five rules:
 
 ## Price
 
-Every part in the sample catalog has a price in whole US dollars. The planner adds the prices of the parts that are selected. Leaving the graphics card, cooler, case, power supply, or storage empty removes that part from the total.
+Every part in the sample catalog has a price in whole US dollars. The planner adds the prices of the parts that are selected. Leaving the graphics card, cooler, case, power supply, or storage empty removes that part from the total. Edit `src/data/prices.json` to change a sample price; a part left out of that file counts as $0.
 
 ## Sharing
 
@@ -44,7 +44,9 @@ The address bar stores the selected part IDs in a short query string. Changing a
 - [x] Running total price for the selected parts
 - [x] Storage interface check (M.2 / SATA slots on the motherboard)
 - [x] Save and share a build via the URL
-- [ ] Refresh sample part prices from a data file
+- [x] Refresh sample part prices from a data file
+- [ ] Mark incompatible parts in the dropdowns
+- [ ] Break the running total down by selected part
 
 ## Note
 
