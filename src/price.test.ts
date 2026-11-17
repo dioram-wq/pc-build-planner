@@ -9,7 +9,8 @@ import {
   psus,
   storage,
 } from './parts.ts'
-import { formatUsd, totalPriceUsd } from './price.ts'
+import { samplePricesUsd } from './data/prices.ts'
+import { applyPrices, formatUsd, totalPriceUsd } from './price.ts'
 
 const catalog = [
   ...cpus,
@@ -71,6 +72,45 @@ describe('totalPriceUsd', () => {
     expect(
       totalPriceUsd([cpu, motherboard, kit, null, null, null, null, null]),
     ).toBe(487)
+  })
+})
+
+describe('applyPrices', () => {
+  it('applies known prices by part id', () => {
+    const priced = applyPrices(
+      [
+        { id: 'cpu-7600', name: 'AMD Ryzen 5 7600' },
+        { id: 'gpu-4090', name: 'NVIDIA GeForce RTX 4090' },
+      ],
+      samplePricesUsd,
+    )
+
+    expect(priced).toEqual([
+      { id: 'cpu-7600', name: 'AMD Ryzen 5 7600', priceUsd: 199 },
+      { id: 'gpu-4090', name: 'NVIDIA GeForce RTX 4090', priceUsd: 1599 },
+    ])
+  })
+
+  it('falls back to zero when a part has no price entry', () => {
+    const priced = applyPrices(
+      [
+        { id: 'cpu-7600', name: 'AMD Ryzen 5 7600' },
+        { id: 'cpu-unlisted', name: 'Unlisted CPU' },
+      ],
+      samplePricesUsd,
+    )
+
+    expect(priced[0].priceUsd).toBe(199)
+    expect(priced[1]).toEqual({
+      id: 'cpu-unlisted',
+      name: 'Unlisted CPU',
+      priceUsd: 0,
+    })
+    expect(totalPriceUsd(priced)).toBe(199)
+  })
+
+  it('leaves the total unchanged for an empty build', () => {
+    expect(totalPriceUsd(applyPrices([], samplePricesUsd))).toBe(0)
   })
 })
 
