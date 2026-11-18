@@ -25,6 +25,12 @@ The planner currently checks five rules:
 - **Case clearance.** A graphics card has to be no longer than the case allows, and a CPU cooler no taller than the case allows. A card over that length is too long, and a cooler over that height is too tall. Matching a limit exactly is ok. With no case selected, the planner asks for one. If the card or the cooler is not selected, that comparison is skipped.
 - **Storage interface.** An M.2 NVMe drive needs at least one M.2 slot on the motherboard, and a SATA drive needs at least one SATA port. With no drive selected, the planner asks for one. The sample catalog covers both interfaces.
 
+## Incompatible options
+
+Each part list marks an option that conflicts with the parts already chosen, using the same rules as the status lines. The label gains a text suffix such as "— incompatible: socket AM5", so the warning is not color alone, and the option can still be selected. A comparison with nothing selected yet leaves that option unmarked.
+
+A processor is marked when its socket differs from the selected motherboard, and a motherboard is marked when its socket differs from the selected processor. Memory is marked the same way for DDR4 and DDR5. A graphics card is marked when it is longer than the selected case allows, a cooler when it is taller, and a case when the selected card or cooler does not fit. Matching a limit exactly stays unmarked. A drive is marked when the motherboard has no M.2 slot or SATA port for its interface, and a motherboard is marked when it cannot take the selected drive. A power supply is marked when its wattage is below the estimated draw. A supply that covers the draw but is short of the recommended headroom keeps its ordinary label.
+
 ## Price
 
 Every part in the sample catalog has a price in whole US dollars. The planner adds the prices of the parts that are selected. Leaving the graphics card, cooler, case, power supply, or storage empty removes that part from the total. Edit `src/data/prices.json` to change a sample price; a part left out of that file counts as $0.
@@ -45,7 +51,7 @@ The address bar stores the selected part IDs in a short query string. Changing a
 - [x] Storage interface check (M.2 / SATA slots on the motherboard)
 - [x] Save and share a build via the URL
 - [x] Refresh sample part prices from a data file
-- [ ] Mark incompatible parts in the dropdowns
+- [x] Mark incompatible parts in the dropdowns
 - [ ] Break the running total down by selected part
 
 ## Note
