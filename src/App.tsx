@@ -24,6 +24,11 @@ import {
   psus,
   storage,
 } from './parts.ts'
+import {
+  checkPartOption,
+  formatIncompatibleOption,
+  type SelectedBuild,
+} from './partOption.ts'
 import { formatUsd, totalPriceUsd } from './price.ts'
 import {
   decodeBuild,
@@ -314,6 +319,25 @@ function StorageStatus({
   )
 }
 
+function CatalogOption({
+  id,
+  label,
+  conflicts,
+}: {
+  id: string
+  label: string
+  conflicts: readonly string[]
+}) {
+  const note = formatIncompatibleOption(conflicts)
+
+  return (
+    <option value={id} className={note ? 'incompatible' : undefined}>
+      {label}
+      {note}
+    </option>
+  )
+}
+
 export default function App() {
   const [build, setBuild] = useState(selectionFromLocation)
   const [copyNote, setCopyNote] = useState('')
@@ -325,6 +349,16 @@ export default function App() {
   const pcCase = build.case ? findPart(cases, build.case) : null
   const psu = build.psu ? findPart(psus, build.psu) : null
   const drive = build.storage ? findPart(storage, build.storage) : null
+  const selected: SelectedBuild = {
+    cpu,
+    motherboard,
+    memory: selectedMemory,
+    gpu,
+    cooler,
+    case: pcCase,
+    psu,
+    storage: drive,
+  }
   const totalUsd = totalPriceUsd([
     cpu,
     motherboard,
@@ -390,9 +424,10 @@ export default function App() {
           cooler, a case, a power supply, and storage. The planner checks that
           the CPU socket and the memory type match the board, that the supply
           covers the estimated draw, that the cooler and graphics card fit the
-          case, and that the motherboard supports the drive interface. Sample
-          prices for the selected parts are totaled below. The address bar
-          keeps a link to this build.
+          case, and that the motherboard supports the drive interface. Options
+          that conflict with the parts already chosen are marked in each list
+          and can still be selected. Sample prices for the selected parts are
+          totaled below. The address bar keeps a link to this build.
         </p>
       </header>
 
@@ -419,9 +454,12 @@ export default function App() {
               }}
             >
               {cpus.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {part.name} · {part.socket} · {formatUsd(part.priceUsd)}
-                </option>
+                <CatalogOption
+                  key={part.id}
+                  id={part.id}
+                  label={`${part.name} · ${part.socket} · ${formatUsd(part.priceUsd)}`}
+                  conflicts={checkPartOption('cpu', part, selected).conflicts}
+                />
               ))}
             </select>
           </div>
@@ -435,9 +473,14 @@ export default function App() {
               }}
             >
               {motherboards.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {`${part.name} · ${part.socket} · ${part.memoryType} · ${part.m2Slots} M.2 · ${part.sataPorts} SATA · ${formatUsd(part.priceUsd)}`}
-                </option>
+                <CatalogOption
+                  key={part.id}
+                  id={part.id}
+                  label={`${part.name} · ${part.socket} · ${part.memoryType} · ${part.m2Slots} M.2 · ${part.sataPorts} SATA · ${formatUsd(part.priceUsd)}`}
+                  conflicts={
+                    checkPartOption('motherboard', part, selected).conflicts
+                  }
+                />
               ))}
             </select>
           </div>
@@ -451,9 +494,12 @@ export default function App() {
               }}
             >
               {memory.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {part.name} · {part.memoryType} · {formatUsd(part.priceUsd)}
-                </option>
+                <CatalogOption
+                  key={part.id}
+                  id={part.id}
+                  label={`${part.name} · ${part.memoryType} · ${formatUsd(part.priceUsd)}`}
+                  conflicts={checkPartOption('memory', part, selected).conflicts}
+                />
               ))}
             </select>
           </div>
@@ -468,9 +514,12 @@ export default function App() {
             >
               <option value="">Integrated graphics</option>
               {gpus.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {`${part.name} · ${part.boardPowerWatts}W · ${part.lengthMm}mm · ${formatUsd(part.priceUsd)}`}
-                </option>
+                <CatalogOption
+                  key={part.id}
+                  id={part.id}
+                  label={`${part.name} · ${part.boardPowerWatts}W · ${part.lengthMm}mm · ${formatUsd(part.priceUsd)}`}
+                  conflicts={checkPartOption('gpu', part, selected).conflicts}
+                />
               ))}
             </select>
           </div>
@@ -485,9 +534,12 @@ export default function App() {
             >
               <option value="">No CPU cooler</option>
               {coolers.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {part.name} · {part.heightMm}mm · {formatUsd(part.priceUsd)}
-                </option>
+                <CatalogOption
+                  key={part.id}
+                  id={part.id}
+                  label={`${part.name} · ${part.heightMm}mm · ${formatUsd(part.priceUsd)}`}
+                  conflicts={checkPartOption('cooler', part, selected).conflicts}
+                />
               ))}
             </select>
           </div>
@@ -502,9 +554,12 @@ export default function App() {
             >
               <option value="">No case</option>
               {cases.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {`${part.name} · ${part.maxGpuLengthMm}mm GPU · ${part.maxCoolerHeightMm}mm cooler · ${formatUsd(part.priceUsd)}`}
-                </option>
+                <CatalogOption
+                  key={part.id}
+                  id={part.id}
+                  label={`${part.name} · ${part.maxGpuLengthMm}mm GPU · ${part.maxCoolerHeightMm}mm cooler · ${formatUsd(part.priceUsd)}`}
+                  conflicts={checkPartOption('case', part, selected).conflicts}
+                />
               ))}
             </select>
           </div>
@@ -519,9 +574,12 @@ export default function App() {
             >
               <option value="">No power supply</option>
               {psus.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {part.name} · {part.wattage}W · {formatUsd(part.priceUsd)}
-                </option>
+                <CatalogOption
+                  key={part.id}
+                  id={part.id}
+                  label={`${part.name} · ${part.wattage}W · ${formatUsd(part.priceUsd)}`}
+                  conflicts={checkPartOption('psu', part, selected).conflicts}
+                />
               ))}
             </select>
           </div>
@@ -536,9 +594,12 @@ export default function App() {
             >
               <option value="">No storage</option>
               {storage.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {part.name} · {part.interface} · {formatUsd(part.priceUsd)}
-                </option>
+                <CatalogOption
+                  key={part.id}
+                  id={part.id}
+                  label={`${part.name} · ${part.interface} · ${formatUsd(part.priceUsd)}`}
+                  conflicts={checkPartOption('storage', part, selected).conflicts}
+                />
               ))}
             </select>
           </div>
