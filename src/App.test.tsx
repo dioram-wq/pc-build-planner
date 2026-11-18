@@ -564,6 +564,159 @@ describe('App', () => {
     }
   })
 
+  it('marks conflicting options in the lists and still lets them be selected', () => {
+    render(<App />)
+
+    const compatibleCpu = screen.getByRole('option', {
+      name: 'AMD Ryzen 5 7600 · AM5 · $199',
+    })
+    const am4Cpu = screen.getByRole('option', {
+      name: 'AMD Ryzen 7 5800X · AM4 · $189 — incompatible: socket AM5',
+    })
+    const ddr4 = screen.getByRole('option', {
+      name: 'Corsair Vengeance LPX 32GB DDR4-3600 · DDR4 · $69 — incompatible: memory DDR5',
+    })
+    const b550 = screen.getByRole('option', {
+      name: 'MSI MAG B550 Tomahawk · AM4 · DDR4 · 2 M.2 · 6 SATA · $149 — incompatible: socket AM5, memory DDR5',
+    })
+
+    expect(compatibleCpu.className).not.toContain('incompatible')
+    expect(am4Cpu.className).toContain('incompatible')
+    expect(am4Cpu).toHaveProperty('disabled', false)
+    expect(ddr4).toHaveProperty('disabled', false)
+    expect(b550).toHaveProperty('disabled', false)
+    expect(screen.getByRole('option', { name: 'Integrated graphics' })).toHaveProperty(
+      'disabled',
+      false,
+    )
+    expect(screen.getByRole('option', { name: 'No storage' })).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'WD Black SN770 1TB · M.2 NVMe · $70',
+      }).className,
+    ).not.toContain('incompatible')
+
+    fireEvent.change(screen.getByLabelText('CPU'), {
+      target: { value: 'cpu-5800x' },
+    })
+
+    expect(screen.getByLabelText('CPU')).toHaveProperty('value', 'cpu-5800x')
+    expect(
+      screen.getByText(
+        'AMD Ryzen 7 5800X (AM4) does not fit ASUS TUF Gaming B650-PLUS (AM5).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · 3 M.2 · 4 SATA · $179 — incompatible: socket AM4',
+      }),
+    ).toBeTruthy()
+  })
+
+  it('marks a card and cooler that miss the case, and clears those marks with no case', () => {
+    render(<App />)
+
+    expect(
+      screen.getByRole('option', {
+        name: 'NVIDIA GeForce RTX 4090 · 450W · 304mm · $1,599',
+      }).className,
+    ).not.toContain('incompatible')
+
+    fireEvent.change(screen.getByLabelText('Case'), {
+      target: { value: 'case-sg13' },
+    })
+
+    expect(
+      screen.getByRole('option', {
+        name: 'NVIDIA GeForce RTX 4060 · 115W · 240mm · $299',
+      }).className,
+    ).not.toContain('incompatible')
+    expect(
+      screen.getByRole('option', {
+        name: 'NVIDIA GeForce RTX 4090 · 450W · 304mm · $1,599 — incompatible: 270mm GPU limit',
+      }),
+    ).toHaveProperty('disabled', false)
+    expect(
+      screen.getByRole('option', {
+        name: 'Noctua NH-L12S · 70mm · $70 — incompatible: 61mm cooler limit',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', { name: 'Noctua NH-L9a · 37mm · $45' }).className,
+    ).not.toContain('incompatible')
+    expect(
+      screen.getByRole('option', {
+        name: 'SilverStone SUGO SG13 · 270mm GPU · 61mm cooler · $70 — incompatible: 70mm cooler',
+      }),
+    ).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Graphics card'), {
+      target: { value: 'gpu-4090' },
+    })
+    fireEvent.change(screen.getByLabelText('CPU cooler'), {
+      target: { value: 'cooler-nhd15' },
+    })
+
+    expect(screen.getByLabelText('Graphics card')).toHaveProperty(
+      'value',
+      'gpu-4090',
+    )
+    expect(screen.getByLabelText('CPU cooler')).toHaveProperty(
+      'value',
+      'cooler-nhd15',
+    )
+    expect(
+      screen.getByRole('option', {
+        name: 'SilverStone SUGO SG13 · 270mm GPU · 61mm cooler · $70 — incompatible: 304mm GPU, 165mm cooler',
+      }),
+    ).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Case'), {
+      target: { value: '' },
+    })
+
+    expect(
+      screen.getByRole('option', {
+        name: 'NVIDIA GeForce RTX 4090 · 450W · 304mm · $1,599',
+      }).className,
+    ).not.toContain('incompatible')
+    expect(
+      screen.getByRole('option', { name: 'Noctua NH-D15 · 165mm · $110' }).className,
+    ).not.toContain('incompatible')
+  })
+
+  it('marks a supply below the estimated draw and leaves a tight supply unmarked', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Graphics card'), {
+      target: { value: 'gpu-4090' },
+    })
+
+    const insufficient = screen.getByRole('option', {
+      name: 'Corsair CX550 · 550W · $65 — incompatible: below 615W',
+    })
+    const tight = screen.getByRole('option', {
+      name: 'Corsair RM650x · 650W · $110',
+    })
+
+    expect(insufficient.className).toContain('incompatible')
+    expect(insufficient).toHaveProperty('disabled', false)
+    expect(tight.className).not.toContain('incompatible')
+
+    fireEvent.change(screen.getByLabelText('Power supply'), {
+      target: { value: 'psu-1000' },
+    })
+    fireEvent.change(screen.getByLabelText('Power supply'), {
+      target: { value: 'psu-550' },
+    })
+
+    expect(screen.getByLabelText('Power supply')).toHaveProperty(
+      'value',
+      'psu-550',
+    )
+    expect(screen.getByText('Insufficient.')).toBeTruthy()
+  })
+
   it('no longer lists case clearance as a later check', () => {
     render(<App />)
 
