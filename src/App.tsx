@@ -29,7 +29,12 @@ import {
   formatIncompatibleOption,
   type SelectedBuild,
 } from './partOption.ts'
-import { formatUsd, totalPriceUsd } from './price.ts'
+import {
+  buildPriceBreakdown,
+  formatUsd,
+  totalPriceUsd,
+  type PriceBreakdownSlot,
+} from './price.ts'
 import {
   decodeBuild,
   encodeBuild,
@@ -319,6 +324,33 @@ function StorageStatus({
   )
 }
 
+export function PriceBreakdown({
+  slots,
+}: {
+  slots: readonly PriceBreakdownSlot[]
+}) {
+  const lines = buildPriceBreakdown(slots)
+  const totalUsd = totalPriceUsd(slots.map((slot) => slot.part ?? null))
+
+  return (
+    <div className="price-summary">
+      <p className="total" role="status">{`Total ${formatUsd(totalUsd)}`}</p>
+      {lines.length > 0 ? (
+        <ul className="breakdown" aria-label="Price breakdown">
+          {lines.map((line) => (
+            <li key={line.category}>
+              <span className="breakdown-part">{line.name}</span>
+              <span className="breakdown-price">
+                {line.priceUsd == null ? '—' : formatUsd(line.priceUsd)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  )
+}
+
 function CatalogOption({
   id,
   label,
@@ -359,16 +391,16 @@ export default function App() {
     psu,
     storage: drive,
   }
-  const totalUsd = totalPriceUsd([
-    cpu,
-    motherboard,
-    selectedMemory,
-    gpu,
-    cooler,
-    pcCase,
-    psu,
-    drive,
-  ])
+  const priceSlots: PriceBreakdownSlot[] = [
+    { category: 'CPU', part: cpu },
+    { category: 'Motherboard', part: motherboard },
+    { category: 'Memory', part: selectedMemory },
+    { category: 'Graphics card', part: gpu },
+    { category: 'CPU cooler', part: cooler },
+    { category: 'Case', part: pcCase },
+    { category: 'Power supply', part: psu },
+    { category: 'Storage', part: drive },
+  ]
 
   useEffect(() => {
     const encoded = encodeBuild(build)
@@ -427,7 +459,7 @@ export default function App() {
           case, and that the motherboard supports the drive interface. Options
           that conflict with the parts already chosen are marked in each list
           and can still be selected. Sample prices for the selected parts are
-          totaled below. The address bar keeps a link to this build.
+          listed and totaled below. The address bar keeps a link to this build.
         </p>
       </header>
 
@@ -604,9 +636,7 @@ export default function App() {
             </select>
           </div>
         </div>
-        <p className="total" role="status">
-          {`Total ${formatUsd(totalUsd)}`}
-        </p>
+        <PriceBreakdown slots={priceSlots} />
         <SocketStatus cpu={cpu} motherboard={motherboard} />
         <MemoryStatus memory={selectedMemory} motherboard={motherboard} />
         <PowerSupplyStatus cpu={cpu} gpu={gpu} psu={psu} />
