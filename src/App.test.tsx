@@ -1,6 +1,16 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import App from './App.tsx'
+import App, { PriceBreakdown } from './App.tsx'
+import {
+  cases,
+  coolers,
+  cpus,
+  gpus,
+  memory,
+  motherboards,
+  psus,
+  storage,
+} from './parts.ts'
 
 describe('App', () => {
   it('starts on a compatible AM5 build whose supply covers the draw', () => {
@@ -332,6 +342,48 @@ describe('App', () => {
 
     expect(screen.getByText('Total $487')).toBeTruthy()
     expect(screen.getByText('Compatible. Both parts use AM5.')).toBeTruthy()
+  })
+
+  it('lists each selected part under the running total', () => {
+    render(<App />)
+
+    const list = screen.getByRole('list', { name: 'Price breakdown' })
+    expect(within(list).getAllByRole('listitem').length).toBe(8)
+    expect(within(list).getByText('AMD Ryzen 5 7600')).toBeTruthy()
+    expect(within(list).getByText('$199')).toBeTruthy()
+    expect(within(list).getByText('NVIDIA GeForce RTX 4060')).toBeTruthy()
+    expect(within(list).getByText('$299')).toBeTruthy()
+    expect(screen.getByText('Total $1,131')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Graphics card'), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText('CPU cooler'), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText('Case'), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText('Power supply'), {
+      target: { value: '' },
+    })
+    fireEvent.change(screen.getByLabelText('Storage'), {
+      target: { value: '' },
+    })
+
+    const partial = screen.getByRole('list', { name: 'Price breakdown' })
+    expect(within(partial).getAllByRole('listitem').length).toBe(3)
+    expect(within(partial).getByText('AMD Ryzen 5 7600')).toBeTruthy()
+    expect(within(partial).getByText('ASUS TUF Gaming B650-PLUS')).toBeTruthy()
+    expect(
+      within(partial).getByText('Corsair Vengeance 32GB DDR5-6000'),
+    ).toBeTruthy()
+    expect(within(partial).queryByText('NVIDIA GeForce RTX 4060')).toBeNull()
+    expect(within(partial).queryByText('Noctua NH-L12S')).toBeNull()
+    expect(within(partial).queryByText('Fractal Design North')).toBeNull()
+    expect(within(partial).queryByText('Corsair CX550')).toBeNull()
+    expect(within(partial).queryByText('WD Black SN770 1TB')).toBeNull()
+    expect(screen.getByText('Total $487')).toBeTruthy()
   })
 
   it('accepts a SATA drive when the motherboard has SATA ports', () => {
@@ -724,5 +776,105 @@ describe('App', () => {
     expect(
       screen.queryByText('Cooler height and graphics card length'),
     ).toBeNull()
+  })
+})
+
+describe('PriceBreakdown', () => {
+  it('shows only the total when nothing is selected', () => {
+    render(
+      <PriceBreakdown
+        slots={[
+          { category: 'CPU', part: null },
+          { category: 'Graphics card', part: null },
+          { category: 'Storage' },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Total $0')).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Price breakdown' })).toBeNull()
+  })
+
+  it('lists the selected parts of a partial build', () => {
+    render(
+      <PriceBreakdown
+        slots={[
+          {
+            category: 'CPU',
+            part: { name: 'AMD Ryzen 5 7600', priceUsd: 199 },
+          },
+          {
+            category: 'Motherboard',
+            part: { name: 'ASUS TUF Gaming B650-PLUS', priceUsd: 179 },
+          },
+          { category: 'Graphics card', part: null },
+          {
+            category: 'Storage',
+            part: { name: 'WD Black SN770 1TB', priceUsd: 70 },
+          },
+        ]}
+      />,
+    )
+
+    const list = screen.getByRole('list', { name: 'Price breakdown' })
+    expect(within(list).getAllByRole('listitem').length).toBe(3)
+    expect(within(list).getByText('AMD Ryzen 5 7600')).toBeTruthy()
+    expect(within(list).getByText('$199')).toBeTruthy()
+    expect(within(list).getByText('ASUS TUF Gaming B650-PLUS')).toBeTruthy()
+    expect(within(list).getByText('$179')).toBeTruthy()
+    expect(within(list).getByText('WD Black SN770 1TB')).toBeTruthy()
+    expect(within(list).getByText('$70')).toBeTruthy()
+    expect(screen.getByText('Total $448')).toBeTruthy()
+  })
+
+  it('lists every part in a full build', () => {
+    render(
+      <PriceBreakdown
+        slots={[
+          { category: 'CPU', part: cpus[0] },
+          { category: 'Motherboard', part: motherboards[0] },
+          { category: 'Memory', part: memory[0] },
+          { category: 'Graphics card', part: gpus[0] },
+          { category: 'CPU cooler', part: coolers[0] },
+          { category: 'Case', part: cases[0] },
+          { category: 'Power supply', part: psus[0] },
+          { category: 'Storage', part: storage[0] },
+        ]}
+      />,
+    )
+
+    const list = screen.getByRole('list', { name: 'Price breakdown' })
+    expect(within(list).getAllByRole('listitem').length).toBe(8)
+    expect(within(list).getByText('AMD Ryzen 5 7600')).toBeTruthy()
+    expect(within(list).getByText('ASUS TUF Gaming B650-PLUS')).toBeTruthy()
+    expect(within(list).getByText('Corsair Vengeance 32GB DDR5-6000')).toBeTruthy()
+    expect(within(list).getByText('NVIDIA GeForce RTX 4060')).toBeTruthy()
+    expect(within(list).getByText('Noctua NH-L12S')).toBeTruthy()
+    expect(within(list).getByText('Fractal Design North')).toBeTruthy()
+    expect(within(list).getByText('Corsair CX550')).toBeTruthy()
+    expect(within(list).getByText('WD Black SN770 1TB')).toBeTruthy()
+    expect(screen.getByText('Total $1,131')).toBeTruthy()
+  })
+
+  it('shows an em dash for a part with no price and leaves it out of the total', () => {
+    render(
+      <PriceBreakdown
+        slots={[
+          {
+            category: 'CPU',
+            part: { name: 'AMD Ryzen 5 7600', priceUsd: 199 },
+          },
+          { category: 'Graphics card', part: { name: 'Unlisted GPU' } },
+        ]}
+      />,
+    )
+
+    const list = screen.getByRole('list', { name: 'Price breakdown' })
+    expect(within(list).getByText('AMD Ryzen 5 7600')).toBeTruthy()
+    expect(within(list).getByText('$199')).toBeTruthy()
+    expect(within(list).getByText('Unlisted GPU')).toBeTruthy()
+    expect(within(list).getByText('—')).toBeTruthy()
+    expect(within(list).queryByText('$0')).toBeNull()
+    expect(screen.getByText('Total $199')).toBeTruthy()
   })
 })

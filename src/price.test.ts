@@ -10,7 +10,12 @@ import {
   storage,
 } from './parts.ts'
 import { samplePricesUsd } from './data/prices.ts'
-import { applyPrices, formatUsd, totalPriceUsd } from './price.ts'
+import {
+  applyPrices,
+  buildPriceBreakdown,
+  formatUsd,
+  totalPriceUsd,
+} from './price.ts'
 
 const catalog = [
   ...cpus,
@@ -111,6 +116,91 @@ describe('applyPrices', () => {
 
   it('leaves the total unchanged for an empty build', () => {
     expect(totalPriceUsd(applyPrices([], samplePricesUsd))).toBe(0)
+  })
+})
+
+describe('buildPriceBreakdown', () => {
+  const cpu = { name: 'AMD Ryzen 5 7600', priceUsd: 199 }
+  const motherboard = { name: 'ASUS TUF Gaming B650-PLUS', priceUsd: 179 }
+  const kit = { name: 'Corsair Vengeance 32GB DDR5-6000', priceUsd: 109 }
+  const gpu = { name: 'NVIDIA GeForce RTX 4060', priceUsd: 299 }
+  const cooler = { name: 'Noctua NH-L12S', priceUsd: 70 }
+  const pcCase = { name: 'Fractal Design North', priceUsd: 140 }
+  const psu = { name: 'Corsair CX550', priceUsd: 65 }
+  const drive = { name: 'WD Black SN770 1TB', priceUsd: 70 }
+
+  const fullBuild = [
+    { category: 'CPU', part: cpu },
+    { category: 'Motherboard', part: motherboard },
+    { category: 'Memory', part: kit },
+    { category: 'Graphics card', part: gpu },
+    { category: 'CPU cooler', part: cooler },
+    { category: 'Case', part: pcCase },
+    { category: 'Power supply', part: psu },
+    { category: 'Storage', part: drive },
+  ]
+
+  it('returns no lines for an empty build', () => {
+    const empty = fullBuild.map((slot) => ({ ...slot, part: null }))
+
+    expect(buildPriceBreakdown(empty)).toEqual([])
+    expect(totalPriceUsd(empty.map((slot) => slot.part))).toBe(0)
+  })
+
+  it('skips unselected parts in a partial build', () => {
+    const partial = [
+      { category: 'CPU', part: cpu },
+      { category: 'Motherboard', part: motherboard },
+      { category: 'Memory', part: kit },
+      { category: 'Graphics card', part: null },
+      { category: 'CPU cooler', part: undefined },
+      { category: 'Case', part: null },
+      { category: 'Power supply', part: null },
+      { category: 'Storage', part: drive },
+    ]
+
+    expect(buildPriceBreakdown(partial)).toEqual([
+      { category: 'CPU', name: cpu.name, priceUsd: 199 },
+      { category: 'Motherboard', name: motherboard.name, priceUsd: 179 },
+      { category: 'Memory', name: kit.name, priceUsd: 109 },
+      { category: 'Storage', name: drive.name, priceUsd: 70 },
+    ])
+    expect(totalPriceUsd(partial.map((slot) => slot.part))).toBe(557)
+  })
+
+  it('lists every selected part in a full build', () => {
+    expect(buildPriceBreakdown(fullBuild)).toEqual([
+      { category: 'CPU', name: cpu.name, priceUsd: 199 },
+      { category: 'Motherboard', name: motherboard.name, priceUsd: 179 },
+      { category: 'Memory', name: kit.name, priceUsd: 109 },
+      { category: 'Graphics card', name: gpu.name, priceUsd: 299 },
+      { category: 'CPU cooler', name: cooler.name, priceUsd: 70 },
+      { category: 'Case', name: pcCase.name, priceUsd: 140 },
+      { category: 'Power supply', name: psu.name, priceUsd: 65 },
+      { category: 'Storage', name: drive.name, priceUsd: 70 },
+    ])
+    expect(totalPriceUsd(fullBuild.map((slot) => slot.part))).toBe(1131)
+  })
+
+  it('leaves a part with no price out of the total', () => {
+    const slots = [
+      { category: 'CPU', part: cpu },
+      { category: 'Graphics card', part: { name: 'Unlisted GPU' } },
+      { category: 'Case', part: { name: 'Bare case', priceUsd: null } },
+    ]
+
+    expect(buildPriceBreakdown(slots)).toEqual([
+      { category: 'CPU', name: cpu.name, priceUsd: 199 },
+      { category: 'Graphics card', name: 'Unlisted GPU', priceUsd: null },
+      { category: 'Case', name: 'Bare case', priceUsd: null },
+    ])
+    expect(totalPriceUsd([{ priceUsd: 199 }, {}, { priceUsd: null }])).toBe(199)
+    expect(
+      buildPriceBreakdown(slots).reduce(
+        (total, line) => total + (line.priceUsd ?? 0),
+        0,
+      ),
+    ).toBe(totalPriceUsd(slots.map((slot) => slot.part)))
   })
 })
 
