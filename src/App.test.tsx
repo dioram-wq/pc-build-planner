@@ -59,6 +59,9 @@ describe('App', () => {
         'Compatible. WD Black SN770 1TB (M.2 NVMe) fits ASUS TUF Gaming B650-PLUS (3 M.2 slots).',
       ),
     ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
   })
 
   it('reports a socket mismatch when the motherboard changes', () => {
@@ -72,6 +75,11 @@ describe('App', () => {
       screen.getByText(
         'AMD Ryzen 5 7600 (AM5) does not fit MSI MAG B550 Tomahawk (AM4).',
       ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', {
+        name: 'Build status: 2 compatibility issues',
+      }),
     ).toBeTruthy()
   })
 
@@ -88,6 +96,9 @@ describe('App', () => {
       ),
     ).toBeTruthy()
     expect(screen.getByText('Compatible. Both parts use AM5.')).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: 1 compatibility issue' }),
+    ).toBeTruthy()
   })
 
   it('accepts DDR4 memory on the B550 motherboard', () => {
@@ -124,6 +135,9 @@ describe('App', () => {
         'Corsair RM650x (650W) covers the 615W estimate but is below the 769W recommendation.',
       ),
     ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
   })
 
   it('marks the supply insufficient when it is below the estimated draw', () => {
@@ -155,6 +169,9 @@ describe('App', () => {
       screen.getByText(
         'Select a power supply to compare against the 280W estimated draw.',
       ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
     ).toBeTruthy()
   })
 
