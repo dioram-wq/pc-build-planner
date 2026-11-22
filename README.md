@@ -25,6 +25,10 @@ The planner currently checks five rules:
 - **Case clearance.** A graphics card has to be no longer than the case allows, and a CPU cooler no taller than the case allows. A card over that length is too long, and a cooler over that height is too tall. Matching a limit exactly is ok. With no case selected, the planner asks for one. If the card or the cooler is not selected, that comparison is skipped.
 - **Storage interface.** An M.2 NVMe drive needs at least one M.2 slot on the motherboard, and a SATA drive needs at least one SATA port. With no drive selected, the planner asks for one. The sample catalog covers both interfaces.
 
+## Build status
+
+A line at the top of the build summarizes the compatibility checks. Until a processor and a motherboard are both selected, it reads "Pick a CPU and motherboard to start". After that, each conflict counts as one compatibility issue, using the same conflicts the part lists mark as incompatible: a socket mismatch, a memory mismatch, a graphics card that is too long, a cooler that is too tall, a power supply below the estimated draw, and a drive the motherboard cannot take. One conflict reads "1 compatibility issue". More than one reads "2 compatibility issues", and so on. When none of those apply, the line reads "All checks pass". A supply that only misses the recommended headroom, and a graphics card, cooler, case, power supply, or drive that is not selected yet, stay out of that count. The lines under the part lists still describe those cases.
+
 ## Incompatible options
 
 Each part list marks an option that conflicts with the parts already chosen, using the same rules as the status lines. The label gains a text suffix such as "— incompatible: socket AM5", so the warning is not color alone, and the option can still be selected. A comparison with nothing selected yet leaves that option unmarked.
@@ -53,6 +57,7 @@ The address bar stores the selected part IDs in a short query string. Changing a
 - [x] Refresh sample part prices from a data file
 - [x] Mark incompatible parts in the dropdowns
 - [x] Break the running total down by selected part
+- [x] Overall build status summary
 
 ## Note
 
