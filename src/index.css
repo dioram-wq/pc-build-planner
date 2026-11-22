@@ -199,3 +199,8 @@ option.incompatible {
   background: #f5f5f4;
   color: #44403c;
 }
+
+.build-summary {
+  margin: 0 0 1rem;
+  font-weight: 600;
+}

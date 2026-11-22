@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
+  buildStatusSummary,
+  type BuildStatusSummary,
+} from './buildStatus.ts'
+import {
   checkCaseClearance,
   checkCpuSocket,
   checkMemoryType,
@@ -115,6 +119,22 @@ function findPart<T extends { id: string }>(parts: readonly T[], id: string): T 
     throw new Error(`Unknown part id: ${id}`)
   }
   return part
+}
+
+function BuildSummary({ summary }: { summary: BuildStatusSummary }) {
+  let tone = 'missing'
+  if (summary.level === 'ok') tone = 'ok'
+  if (summary.level === 'issue') tone = 'bad'
+
+  return (
+    <p
+      className={`build-summary status ${tone}`}
+      role="status"
+      aria-label={`Build status: ${summary.text}`}
+    >
+      {summary.text}
+    </p>
+  )
 }
 
 function SocketStatus({
@@ -391,6 +411,16 @@ export default function App() {
     psu,
     storage: drive,
   }
+  const summary = buildStatusSummary(
+    { cpu, motherboard },
+    {
+      socket: checkCpuSocket(cpu, motherboard),
+      memory: checkMemoryType(selectedMemory, motherboard),
+      power: checkPowerSupply(cpu, gpu, psu),
+      clearance: checkCaseClearance(pcCase, gpu, cooler),
+      storage: checkStorageInterface(drive, motherboard),
+    },
+  )
   const priceSlots: PriceBreakdownSlot[] = [
     { category: 'CPU', part: cpu },
     { category: 'Motherboard', part: motherboard },
@@ -456,7 +486,8 @@ export default function App() {
           cooler, a case, a power supply, and storage. The planner checks that
           the CPU socket and the memory type match the board, that the supply
           covers the estimated draw, that the cooler and graphics card fit the
-          case, and that the motherboard supports the drive interface. Options
+          case, and that the motherboard supports the drive interface. A line
+          at the top of the build counts any compatibility issues. Options
           that conflict with the parts already chosen are marked in each list
           and can still be selected. Sample prices for the selected parts are
           listed and totaled below. The address bar keeps a link to this build.
@@ -475,6 +506,7 @@ export default function App() {
             {copyNote}
           </p>
         ) : null}
+        <BuildSummary summary={summary} />
         <div className="fields">
           <div className="field">
             <label htmlFor="cpu">CPU</label>
