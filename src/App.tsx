@@ -7,8 +7,10 @@ import {
   checkCaseClearance,
   checkCpuSocket,
   checkMemoryType,
+  checkMotherboardFormFactor,
   checkPowerSupply,
   checkStorageInterface,
+  formatFormFactorList,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -236,6 +238,44 @@ function PowerSupplyStatus({
   )
 }
 
+function FormFactorStatus({
+  motherboard,
+  pcCase,
+}: {
+  motherboard: Motherboard
+  pcCase: Case | null
+}) {
+  const result = checkMotherboardFormFactor(motherboard, pcCase)
+
+  if (result.status === 'ok' && pcCase) {
+    return (
+      <p className="status ok" role="status">
+        {`Compatible. ${motherboard.name} (${motherboard.formFactor}) fits ${pcCase.name} (${formatFormFactorList(pcCase.supportedFormFactors)}).`}
+      </p>
+    )
+  }
+
+  let heading = 'No case selected.'
+  let tone = 'missing'
+  if (result.status === 'unsupported') {
+    heading = 'Board does not fit.'
+    tone = 'bad'
+  } else if (pcCase) {
+    heading = 'Form factor unknown.'
+  }
+
+  return (
+    <div className={`status ${tone}`} role="status">
+      <p>{heading}</p>
+      <ul>
+        {result.issues.map((issue) => (
+          <li key={issue.code}>{issue.message}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function ClearanceStatus({
   pcCase,
   gpu,
@@ -419,6 +459,7 @@ export default function App() {
       power: checkPowerSupply(cpu, gpu, psu),
       clearance: checkCaseClearance(pcCase, gpu, cooler),
       storage: checkStorageInterface(drive, motherboard),
+      formFactor: checkMotherboardFormFactor(motherboard, pcCase),
     },
   )
   const priceSlots: PriceBreakdownSlot[] = [
@@ -485,8 +526,9 @@ export default function App() {
           Choose a processor, a motherboard, memory, a graphics card, a CPU
           cooler, a case, a power supply, and storage. The planner checks that
           the CPU socket and the memory type match the board, that the supply
-          covers the estimated draw, that the cooler and graphics card fit the
-          case, and that the motherboard supports the drive interface. A line
+          covers the estimated draw, that the case supports the motherboard
+          form factor, that the cooler and graphics card fit the case, and
+          that the motherboard supports the drive interface. A line
           at the top of the build counts any compatibility issues. Options
           that conflict with the parts already chosen are marked in each list
           and can still be selected. Sample prices for the selected parts are
@@ -540,7 +582,7 @@ export default function App() {
                 <CatalogOption
                   key={part.id}
                   id={part.id}
-                  label={`${part.name} · ${part.socket} · ${part.memoryType} · ${part.m2Slots} M.2 · ${part.sataPorts} SATA · ${formatUsd(part.priceUsd)}`}
+                  label={`${part.name} · ${part.socket} · ${part.memoryType} · ${part.formFactor} · ${part.m2Slots} M.2 · ${part.sataPorts} SATA · ${formatUsd(part.priceUsd)}`}
                   conflicts={
                     checkPartOption('motherboard', part, selected).conflicts
                   }
@@ -621,7 +663,7 @@ export default function App() {
                 <CatalogOption
                   key={part.id}
                   id={part.id}
-                  label={`${part.name} · ${part.maxGpuLengthMm}mm GPU · ${part.maxCoolerHeightMm}mm cooler · ${formatUsd(part.priceUsd)}`}
+                  label={`${part.name} · ${formatFormFactorList(part.supportedFormFactors)} · ${part.maxGpuLengthMm}mm GPU · ${part.maxCoolerHeightMm}mm cooler · ${formatUsd(part.priceUsd)}`}
                   conflicts={checkPartOption('case', part, selected).conflicts}
                 />
               ))}
@@ -672,6 +714,7 @@ export default function App() {
         <SocketStatus cpu={cpu} motherboard={motherboard} />
         <MemoryStatus memory={selectedMemory} motherboard={motherboard} />
         <PowerSupplyStatus cpu={cpu} gpu={gpu} psu={psu} />
+        <FormFactorStatus motherboard={motherboard} pcCase={pcCase} />
         <ClearanceStatus pcCase={pcCase} gpu={gpu} cooler={cooler} />
         <StorageStatus drive={drive} motherboard={motherboard} />
       </section>

@@ -48,6 +48,7 @@ const motherboardCatalog = [
     memoryType: 'DDR5',
     m2Slots: 3,
     sataPorts: 4,
+    formFactor: 'ATX',
   },
   {
     id: 'board-b550',
@@ -56,6 +57,7 @@ const motherboardCatalog = [
     memoryType: 'DDR4',
     m2Slots: 2,
     sataPorts: 6,
+    formFactor: 'ATX',
   },
   {
     id: 'board-z790',
@@ -64,6 +66,7 @@ const motherboardCatalog = [
     memoryType: 'DDR5',
     m2Slots: 4,
     sataPorts: 6,
+    formFactor: 'ATX',
   },
   {
     id: 'board-z890',
@@ -72,6 +75,7 @@ const motherboardCatalog = [
     memoryType: 'DDR5',
     m2Slots: 5,
     sataPorts: 4,
+    formFactor: 'ATX',
   },
 ] as const satisfies readonly Motherboard[]
 
@@ -150,24 +154,28 @@ const caseCatalog = [
     name: 'Fractal Design North',
     maxGpuLengthMm: 355,
     maxCoolerHeightMm: 170,
+    supportedFormFactors: ['ATX', 'Micro-ATX', 'Mini-ITX'],
   },
   {
     id: 'case-lancool',
     name: 'Lian Li Lancool 216',
     maxGpuLengthMm: 392,
     maxCoolerHeightMm: 180,
+    supportedFormFactors: ['ATX', 'Micro-ATX', 'Mini-ITX'],
   },
   {
     id: 'case-nr200',
     name: 'Cooler Master NR200P',
     maxGpuLengthMm: 330,
     maxCoolerHeightMm: 155,
+    supportedFormFactors: ['Mini-ITX'],
   },
   {
     id: 'case-sg13',
     name: 'SilverStone SUGO SG13',
     maxGpuLengthMm: 270,
     maxCoolerHeightMm: 61,
+    supportedFormFactors: ['Mini-ITX'],
   },
 ] as const satisfies readonly Case[]
 

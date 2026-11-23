@@ -296,7 +296,7 @@ describe('App', () => {
       target: { value: '' },
     })
 
-    expect(screen.getByText('No case selected.')).toBeTruthy()
+    expect(screen.getAllByText('No case selected.').length).toBe(2)
     expect(
       screen.getByText(
         'Select a case to check graphics card length and cooler height.',
@@ -646,7 +646,7 @@ describe('App', () => {
       name: 'Corsair Vengeance LPX 32GB DDR4-3600 · DDR4 · $69 — incompatible: memory DDR5',
     })
     const b550 = screen.getByRole('option', {
-      name: 'MSI MAG B550 Tomahawk · AM4 · DDR4 · 2 M.2 · 6 SATA · $149 — incompatible: socket AM5, memory DDR5',
+      name: 'MSI MAG B550 Tomahawk · AM4 · DDR4 · ATX · 2 M.2 · 6 SATA · $149 — incompatible: socket AM5, memory DDR5',
     })
 
     expect(compatibleCpu.className).not.toContain('incompatible')
@@ -677,7 +677,7 @@ describe('App', () => {
     ).toBeTruthy()
     expect(
       screen.getByRole('option', {
-        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · 3 M.2 · 4 SATA · $179 — incompatible: socket AM4',
+        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · ATX · 3 M.2 · 4 SATA · $179 — incompatible: socket AM4',
       }),
     ).toBeTruthy()
   })
@@ -715,7 +715,7 @@ describe('App', () => {
     ).not.toContain('incompatible')
     expect(
       screen.getByRole('option', {
-        name: 'SilverStone SUGO SG13 · 270mm GPU · 61mm cooler · $70 — incompatible: 70mm cooler',
+        name: 'SilverStone SUGO SG13 · Mini-ITX · 270mm GPU · 61mm cooler · $70 — incompatible: ATX motherboard, 70mm cooler',
       }),
     ).toBeTruthy()
 
@@ -736,7 +736,7 @@ describe('App', () => {
     )
     expect(
       screen.getByRole('option', {
-        name: 'SilverStone SUGO SG13 · 270mm GPU · 61mm cooler · $70 — incompatible: 304mm GPU, 165mm cooler',
+        name: 'SilverStone SUGO SG13 · Mini-ITX · 270mm GPU · 61mm cooler · $70 — incompatible: ATX motherboard, 304mm GPU, 165mm cooler',
       }),
     ).toBeTruthy()
 

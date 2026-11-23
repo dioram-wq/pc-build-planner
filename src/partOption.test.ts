@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type {
+  BoardFormFactor,
   Case,
   Cpu,
   CpuCooler,
@@ -29,6 +30,7 @@ function board(
   memoryType: MemoryType = 'DDR5',
   m2Slots = 2,
   sataPorts = 4,
+  formFactor: BoardFormFactor = 'ATX',
 ): Motherboard {
   return {
     id: `board-${socket}-${memoryType}`,
@@ -37,6 +39,7 @@ function board(
     memoryType,
     m2Slots,
     sataPorts,
+    formFactor,
   }
 }
 
@@ -56,12 +59,18 @@ function chassis(
   maxGpuLengthMm: number,
   maxCoolerHeightMm: number,
   name = 'Sample case',
+  supportedFormFactors: readonly BoardFormFactor[] = [
+    'ATX',
+    'Micro-ATX',
+    'Mini-ITX',
+  ],
 ): Case {
   return {
     id: `case-${maxGpuLengthMm}-${maxCoolerHeightMm}`,
     name,
     maxGpuLengthMm,
     maxCoolerHeightMm,
+    supportedFormFactors,
   }
 }
 

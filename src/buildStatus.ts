@@ -1,6 +1,7 @@
 import type {
   ClearanceCheck,
   Cpu,
+  FormFactorCheck,
   MemoryCheck,
   Motherboard,
   PowerCheck,
@@ -26,10 +27,12 @@ export type BuildStatusChecks = {
   power: PowerCheck | null
   clearance: ClearanceCheck | null
   storage: StorageCheck | null
+  formFactor: FormFactorCheck | null
 }
 
-// Hard conflicts only. A tight supply, and a part that is not selected yet,
-// stay on the detail lines and do not count as compatibility issues.
+// Hard conflicts only. A tight supply, a part that is not selected yet, and a
+// form factor the parts do not list stay on the detail lines and do not count
+// as compatibility issues.
 const compatibilityIssueCodes = new Set<string>([
   'socket-mismatch',
   'memory-mismatch',
@@ -37,6 +40,7 @@ const compatibilityIssueCodes = new Set<string>([
   'gpu-too-long',
   'cooler-too-tall',
   'storage-unsupported',
+  'form-factor-unsupported',
 ])
 
 export function buildStatusSummary(
@@ -66,6 +70,7 @@ function countCompatibilityIssues(checks: BuildStatusChecks): number {
     checks.power?.issues,
     checks.clearance?.issues,
     checks.storage?.issues,
+    checks.formFactor?.issues,
   ]
 
   let count = 0

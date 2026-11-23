@@ -4,8 +4,10 @@ import {
   checkCaseClearance,
   checkCpuSocket,
   checkMemoryType,
+  checkMotherboardFormFactor,
   checkPowerSupply,
   checkStorageInterface,
+  type BoardFormFactor,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -29,6 +31,7 @@ function board(
   memoryType: MemoryType = 'DDR5',
   m2Slots = 2,
   sataPorts = 4,
+  formFactor: BoardFormFactor = 'ATX',
 ): Motherboard {
   return {
     id: `board-${socket}`,
@@ -37,6 +40,7 @@ function board(
     memoryType,
     m2Slots,
     sataPorts,
+    formFactor,
   }
 }
 
@@ -60,12 +64,18 @@ function chassis(
   maxGpuLengthMm: number,
   maxCoolerHeightMm: number,
   name = 'Sample case',
+  supportedFormFactors: readonly BoardFormFactor[] = [
+    'ATX',
+    'Micro-ATX',
+    'Mini-ITX',
+  ],
 ): Case {
   return {
     id: `case-${maxGpuLengthMm}-${maxCoolerHeightMm}`,
     name,
     maxGpuLengthMm,
     maxCoolerHeightMm,
+    supportedFormFactors,
   }
 }
 
@@ -96,6 +106,7 @@ function checksFor(parts: {
     power: checkPowerSupply(parts.cpu, parts.gpu, parts.psu),
     clearance: checkCaseClearance(parts.pcCase, parts.gpu, parts.cooler),
     storage: checkStorageInterface(parts.storage, parts.motherboard),
+    formFactor: checkMotherboardFormFactor(parts.motherboard, parts.pcCase),
   }
 }
 
@@ -122,6 +133,7 @@ describe('buildStatusSummary', () => {
           power: null,
           clearance: null,
           storage: null,
+          formFactor: null,
         },
       ),
     ).toEqual({
@@ -138,6 +150,7 @@ describe('buildStatusSummary', () => {
       power: null,
       clearance: null,
       storage: null,
+      formFactor: null,
     }
 
     expect(
@@ -170,6 +183,7 @@ describe('buildStatusSummary', () => {
           tower(165, 'Noctua NH-D15'),
         ),
         storage: null,
+        formFactor: null,
       },
     )
 

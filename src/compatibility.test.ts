@@ -8,6 +8,7 @@ import {
   type Case,
   type Cpu,
   type CpuCooler,
+  type BoardFormFactor,
   type CpuSocket,
   type Gpu,
   type Memory,
@@ -42,6 +43,7 @@ function board(
   memoryType: MemoryType = 'DDR5',
   m2Slots = 2,
   sataPorts = 4,
+  formFactor: BoardFormFactor = 'ATX',
 ): Motherboard {
   return {
     id: `board-${socket}`,
@@ -50,6 +52,7 @@ function board(
     memoryType,
     m2Slots,
     sataPorts,
+    formFactor,
   }
 }
 
@@ -73,12 +76,18 @@ function chassis(
   maxGpuLengthMm: number,
   maxCoolerHeightMm: number,
   name = 'Sample case',
+  supportedFormFactors: readonly BoardFormFactor[] = [
+    'ATX',
+    'Micro-ATX',
+    'Mini-ITX',
+  ],
 ): Case {
   return {
     id: `case-${maxGpuLengthMm}-${maxCoolerHeightMm}`,
     name,
     maxGpuLengthMm,
     maxCoolerHeightMm,
+    supportedFormFactors,
   }
 }
 

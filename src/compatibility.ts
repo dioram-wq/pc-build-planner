@@ -2,6 +2,8 @@ export type CpuSocket = 'AM4' | 'AM5' | 'LGA1700' | 'LGA1851'
 
 export type MemoryType = 'DDR4' | 'DDR5'
 
+export type BoardFormFactor = 'ATX' | 'Micro-ATX' | 'Mini-ITX'
+
 export type Cpu = {
   id: string
   name: string
@@ -16,6 +18,7 @@ export type Motherboard = {
   memoryType: MemoryType
   m2Slots: number
   sataPorts: number
+  formFactor: BoardFormFactor
 }
 
 export type Memory = {
@@ -97,6 +100,7 @@ export type Case = {
   name: string
   maxGpuLengthMm: number
   maxCoolerHeightMm: number
+  supportedFormFactors: readonly BoardFormFactor[]
 }
 
 export type Psu = {
@@ -306,4 +310,119 @@ export function checkStorageInterface(
       },
     ],
   }
+}
+
+export type FormFactorStatus = 'ok' | 'unsupported' | 'missing'
+
+export type FormFactorIssue = {
+  code: 'form-factor-unsupported' | 'form-factor-missing'
+  message: string
+}
+
+export type FormFactorCheck = {
+  status: FormFactorStatus
+  issues: FormFactorIssue[]
+}
+
+export type FormFactorBoard = {
+  name: string
+  formFactor?: BoardFormFactor | null
+}
+
+export type FormFactorCase = {
+  name: string
+  supportedFormFactors?: readonly BoardFormFactor[] | null
+}
+
+const boardFormFactors: readonly BoardFormFactor[] = [
+  'ATX',
+  'Micro-ATX',
+  'Mini-ITX',
+]
+
+export function formatFormFactorList(
+  formFactors: readonly BoardFormFactor[],
+): string {
+  return formFactors.join(', ')
+}
+
+function isBoardFormFactor(value: unknown): value is BoardFormFactor {
+  return boardFormFactors.some((formFactor) => formFactor === value)
+}
+
+function listedFormFactors(
+  formFactors: readonly BoardFormFactor[] | null | undefined,
+): BoardFormFactor[] {
+  if (!formFactors) return []
+  return formFactors.filter(isBoardFormFactor)
+}
+
+export function checkMotherboardFormFactor(
+  motherboard: FormFactorBoard,
+  pcCase: FormFactorCase | null,
+): FormFactorCheck {
+  if (!pcCase) {
+    return {
+      status: 'missing',
+      issues: [
+        {
+          code: 'form-factor-missing',
+          message: 'Select a case to check the motherboard form factor.',
+        },
+      ],
+    }
+  }
+
+  const formFactor = isBoardFormFactor(motherboard.formFactor)
+    ? motherboard.formFactor
+    : null
+  const supported = listedFormFactors(pcCase.supportedFormFactors)
+
+  if (!formFactor || supported.length === 0) {
+    return {
+      status: 'missing',
+      issues: [
+        {
+          code: 'form-factor-missing',
+          message: missingFormFactorMessage(
+            motherboard.name,
+            pcCase.name,
+            formFactor != null,
+            supported.length > 0,
+          ),
+        },
+      ],
+    }
+  }
+
+  if (supported.includes(formFactor)) {
+    return { status: 'ok', issues: [] }
+  }
+
+  return {
+    status: 'unsupported',
+    issues: [
+      {
+        code: 'form-factor-unsupported',
+        message: `${motherboard.name} (${formFactor}) does not fit ${pcCase.name} (${formatFormFactorList(supported)}).`,
+      },
+    ],
+  }
+}
+
+function missingFormFactorMessage(
+  boardName: string,
+  caseName: string,
+  boardListed: boolean,
+  caseListed: boolean,
+): string {
+  if (!boardListed && !caseListed) {
+    return `${boardName} does not list a form factor, and ${caseName} does not list the motherboard sizes it supports.`
+  }
+
+  if (!boardListed) {
+    return `${boardName} does not list a form factor.`
+  }
+
+  return `${caseName} does not list the motherboard sizes it supports.`
 }

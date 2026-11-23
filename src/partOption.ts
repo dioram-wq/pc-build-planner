@@ -2,8 +2,10 @@ import {
   checkCaseClearance,
   checkCpuSocket,
   checkMemoryType,
+  checkMotherboardFormFactor,
   checkPowerSupply,
   checkStorageInterface,
+  formatFormFactorList,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -158,6 +160,11 @@ function motherboardConflicts(
     if (storage) conflicts.push(storage)
   }
 
+  if (build.case) {
+    const formFactor = motherboardFormFactorConflict(candidate, build.case)
+    if (formFactor) conflicts.push(formFactor)
+  }
+
   return optionResult(conflicts)
 }
 
@@ -198,6 +205,11 @@ function caseConflicts(candidate: Case, build: SelectedBuild): PartOptionCheck {
   const clearance = checkCaseClearance(candidate, build.gpu, build.cooler)
   const conflicts: string[] = []
 
+  if (build.motherboard) {
+    const formFactor = caseFormFactorConflict(candidate, build.motherboard)
+    if (formFactor) conflicts.push(formFactor)
+  }
+
   if (clearance.gpuLength === 'too-long' && build.gpu) {
     conflicts.push(`${build.gpu.lengthMm}mm GPU`)
   }
@@ -226,6 +238,26 @@ function storageConflicts(
 
   const storage = storageSlotConflict(candidate, build.motherboard)
   return optionResult(storage ? [storage] : [])
+}
+
+function motherboardFormFactorConflict(
+  motherboard: Motherboard,
+  pcCase: Case,
+): string | null {
+  const result = checkMotherboardFormFactor(motherboard, pcCase)
+  if (result.status !== 'unsupported') return null
+
+  return `case supports ${formatFormFactorList(pcCase.supportedFormFactors)}`
+}
+
+function caseFormFactorConflict(
+  pcCase: Case,
+  motherboard: Motherboard,
+): string | null {
+  const result = checkMotherboardFormFactor(motherboard, pcCase)
+  if (result.status !== 'unsupported' || !motherboard.formFactor) return null
+
+  return `${motherboard.formFactor} motherboard`
 }
 
 function storageSlotConflict(
