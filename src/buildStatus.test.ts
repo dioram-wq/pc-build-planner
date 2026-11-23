@@ -269,4 +269,46 @@ describe('buildStatusSummary', () => {
       { level: 'ok', text: 'All checks pass' },
     )
   })
+
+  it('counts a motherboard the case cannot take', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4, 'ATX')
+    const checks = passing()
+    checks.formFactor = checkMotherboardFormFactor(
+      b650,
+      chassis(330, 155, 'Cooler Master NR200P', ['Mini-ITX']),
+    )
+
+    expect(checks.formFactor.status).toBe('unsupported')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'issue', text: '1 compatibility issue' })
+  })
+
+  it('ignores a missing case and parts that do not list a form factor', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4, 'ATX')
+    const checks = passing()
+
+    checks.formFactor = checkMotherboardFormFactor(b650, null)
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.formFactor = checkMotherboardFormFactor(b650, {
+      name: 'Mystery case',
+      supportedFormFactors: [],
+    })
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.formFactor = checkMotherboardFormFactor(
+      { name: 'Unlisted board' },
+      chassis(355, 170, 'Fractal Design North'),
+    )
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+  })
 })

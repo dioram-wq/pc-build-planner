@@ -3,6 +3,7 @@ import {
   checkCaseClearance,
   checkCpuSocket,
   checkMemoryType,
+  checkMotherboardFormFactor,
   checkPowerSupply,
   checkStorageInterface,
   type Case,
@@ -598,6 +599,208 @@ describe('checkStorageInterface', () => {
   })
 })
 
+describe('checkMotherboardFormFactor', () => {
+  const b650 = () =>
+    board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 3, 4, 'ATX')
+  const north = () =>
+    chassis(355, 170, 'Fractal Design North', [
+      'ATX',
+      'Micro-ATX',
+      'Mini-ITX',
+    ])
+  const miniCase = () =>
+    chassis(330, 155, 'Cooler Master NR200P', ['Mini-ITX'])
+
+  it('accepts a board whose size the case lists', () => {
+    expect(checkMotherboardFormFactor(b650(), north())).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts a board when the case lists only that size', () => {
+    const mini = board(
+      'AM5',
+      'ASUS ROG Strix B650E-I',
+      'DDR5',
+      2,
+      4,
+      'Mini-ITX',
+    )
+
+    expect(checkMotherboardFormFactor(mini, miniCase())).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts every listed size, including ones smaller than the largest', () => {
+    const sizes = ['ATX', 'Micro-ATX', 'Mini-ITX'] as const
+    const pcCase = chassis(355, 170, 'Full tower', sizes)
+
+    for (const formFactor of sizes) {
+      expect(
+        checkMotherboardFormFactor(
+          board('AM5', 'Sample motherboard', 'DDR5', 2, 4, formFactor),
+          pcCase,
+        ).status,
+      ).toBe('ok')
+    }
+  })
+
+  it('rejects a larger board the case does not list and names both sizes', () => {
+    expect(checkMotherboardFormFactor(b650(), miniCase())).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'form-factor-unsupported',
+          message:
+            'ASUS TUF Gaming B650-PLUS (ATX) does not fit Cooler Master NR200P (Mini-ITX).',
+        },
+      ],
+    })
+  })
+
+  it('rejects a smaller board when that size is not on the case list', () => {
+    expect(
+      checkMotherboardFormFactor(
+        board('AM5', 'Mini board', 'DDR5', 1, 2, 'Mini-ITX'),
+        chassis(300, 160, 'ATX only', ['ATX']),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'form-factor-unsupported',
+          message: 'Mini board (Mini-ITX) does not fit ATX only (ATX).',
+        },
+      ],
+    })
+  })
+
+  it('rejects Micro-ATX when the case lists the sizes on either side of it', () => {
+    expect(
+      checkMotherboardFormFactor(
+        board('AM5', 'M-ATX board', 'DDR5', 2, 4, 'Micro-ATX'),
+        chassis(300, 160, 'Skipped middle', ['ATX', 'Mini-ITX']),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'form-factor-unsupported',
+          message:
+            'M-ATX board (Micro-ATX) does not fit Skipped middle (ATX, Mini-ITX).',
+        },
+      ],
+    })
+  })
+
+  it('asks for a case when none is selected', () => {
+    expect(checkMotherboardFormFactor(b650(), null)).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'form-factor-missing',
+          message: 'Select a case to check the motherboard form factor.',
+        },
+      ],
+    })
+  })
+
+  it('reports a motherboard that does not list a form factor', () => {
+    expect(
+      checkMotherboardFormFactor({ name: 'Unlisted board' }, north()),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'form-factor-missing',
+          message: 'Unlisted board does not list a form factor.',
+        },
+      ],
+    })
+
+    expect(
+      checkMotherboardFormFactor(
+        { name: 'Unlisted board', formFactor: null },
+        north(),
+      ).status,
+    ).toBe('missing')
+  })
+
+  it('reports a case that does not list the sizes it supports', () => {
+    expect(
+      checkMotherboardFormFactor(b650(), chassis(355, 170, 'Mystery case', [])),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'form-factor-missing',
+          message:
+            'Mystery case does not list the motherboard sizes it supports.',
+        },
+      ],
+    })
+
+    expect(
+      checkMotherboardFormFactor(b650(), { name: 'Mystery case' }).issues[0]
+        ?.message,
+    ).toBe('Mystery case does not list the motherboard sizes it supports.')
+  })
+
+  it('reports both parts when neither lists a size', () => {
+    expect(
+      checkMotherboardFormFactor(
+        { name: 'Unlisted board' },
+        { name: 'Mystery case', supportedFormFactors: [] },
+      ),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'form-factor-missing',
+          message:
+            'Unlisted board does not list a form factor, and Mystery case does not list the motherboard sizes it supports.',
+        },
+      ],
+    })
+  })
+
+  it('treats an unrecognized size as missing data', () => {
+    expect(
+      checkMotherboardFormFactor(
+        { name: 'Odd board', formFactor: 'E-ATX' as 'ATX' },
+        north(),
+      ),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'form-factor-missing',
+          message: 'Odd board does not list a form factor.',
+        },
+      ],
+    })
+
+    expect(
+      checkMotherboardFormFactor(b650(), {
+        name: 'Odd case',
+        supportedFormFactors: ['E-ATX' as 'ATX'],
+      }),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'form-factor-missing',
+          message:
+            'Odd case does not list the motherboard sizes it supports.',
+        },
+      ],
+    })
+  })
+})
+
 describe('sample catalog', () => {
   it('offers a motherboard for every CPU socket', () => {
     for (const part of cpus) {
@@ -706,6 +909,36 @@ describe('sample catalog', () => {
       expect(Number.isInteger(part.sataPorts)).toBe(true)
       expect(part.m2Slots).toBeGreaterThan(0)
       expect(part.sataPorts).toBeGreaterThan(0)
+    }
+  })
+
+  it('records a form factor on every motherboard and supported sizes on every case', () => {
+    const sizes = ['ATX', 'Micro-ATX', 'Mini-ITX'] as const
+
+    expect(motherboards.length).toBeGreaterThan(0)
+    for (const part of motherboards) {
+      expect(sizes).toContain(part.formFactor)
+    }
+
+    expect(cases.length).toBeGreaterThan(0)
+    for (const part of cases) {
+      expect(part.supportedFormFactors.length).toBeGreaterThan(0)
+      for (const size of part.supportedFormFactors) {
+        expect(sizes).toContain(size)
+      }
+    }
+  })
+
+  it('includes a case that fits each sample board and a case that does not', () => {
+    for (const part of motherboards) {
+      const results = cases.map((pcCase) =>
+        checkMotherboardFormFactor(part, pcCase),
+      )
+
+      expect(results.some((result) => result.status === 'ok')).toBe(true)
+      expect(results.some((result) => result.status === 'unsupported')).toBe(
+        true,
+      )
     }
   })
 

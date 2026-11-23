@@ -206,6 +206,17 @@ describe('checkPartOption', () => {
       expect(checkPartOption('cpu', ryzen(), build)).toEqual(compatible)
     })
 
+    it('accepts a motherboard the case lists and a case that lists that board', () => {
+      const motherboard = board('AM5', 'ATX board', 'DDR5', 2, 4, 'Micro-ATX')
+      const pcCase = chassis(355, 170, 'ATX case', ['ATX', 'Micro-ATX'])
+      const build = selected({ motherboard, case: pcCase })
+
+      expect(checkPartOption('motherboard', motherboard, build)).toEqual(
+        compatible,
+      )
+      expect(checkPartOption('case', pcCase, build)).toEqual(compatible)
+    })
+
     it('does not mark a processor or graphics card for power draw', () => {
       const hotCpu = cpu('AM5', 'Hot CPU', 250)
       const hungryGpu = card(450, 'Hungry GPU', 200)
@@ -387,6 +398,63 @@ describe('checkPartOption', () => {
       )
     })
 
+    it('marks a motherboard the case does not list, and the case for that board', () => {
+      const motherboard = board('AM5', 'ATX board', 'DDR5', 2, 4, 'ATX')
+      const pcCase = chassis(330, 155, 'Cooler Master NR200P', ['Mini-ITX'])
+      const build = selected({ motherboard, case: pcCase })
+
+      expect(checkPartOption('motherboard', motherboard, build)).toEqual({
+        compatible: false,
+        conflicts: ['case supports Mini-ITX'],
+      })
+      expect(checkPartOption('case', pcCase, build)).toEqual({
+        compatible: false,
+        conflicts: ['ATX motherboard'],
+      })
+    })
+
+    it('lists form factor after the other motherboard conflicts', () => {
+      expect(
+        checkPartOption(
+          'motherboard',
+          board('AM4', 'Tiny board', 'DDR4', 0, 0, 'ATX'),
+          selected({
+            cpu: cpu('AM5'),
+            memory: kit('DDR5'),
+            storage: drive('M.2 NVMe'),
+            case: chassis(330, 155, 'Mini case', ['Mini-ITX']),
+          }),
+        ),
+      ).toEqual({
+        compatible: false,
+        conflicts: [
+          'socket AM5',
+          'memory DDR5',
+          'no M.2 slots',
+          'case supports Mini-ITX',
+        ],
+      })
+    })
+
+    it('lists the motherboard size before clearance conflicts on a case', () => {
+      const pcCase = chassis(270, 61, 'SilverStone SUGO SG13', ['Mini-ITX'])
+
+      expect(
+        checkPartOption(
+          'case',
+          pcCase,
+          selected({
+            motherboard: board('AM5', 'ATX board', 'DDR5', 2, 4, 'ATX'),
+            gpu: card(450, 'NVIDIA GeForce RTX 4090', 304),
+            cooler: tower(165, 'Noctua NH-D15'),
+          }),
+        ),
+      ).toEqual({
+        compatible: false,
+        conflicts: ['ATX motherboard', '304mm GPU', '165mm cooler'],
+      })
+    })
+
     it('uses the sample catalog sockets, clearance, and wattage', () => {
       const ryzen = cpus.find((part) => part.id === 'cpu-7600')
       const am4 = cpus.find((part) => part.id === 'cpu-5800x')
@@ -487,6 +555,37 @@ describe('checkPartOption', () => {
           selected({ gpu: card(450, 'Hungry', 300) }),
         ),
       ).toEqual(compatible)
+    })
+
+    it('skips form factor until a case or a motherboard is selected', () => {
+      const atx = board('AM5', 'ATX board', 'DDR5', 2, 4, 'ATX')
+      const mini = chassis(330, 155, 'Mini case', ['Mini-ITX'])
+
+      expect(checkPartOption('motherboard', atx, selected())).toEqual(
+        compatible,
+      )
+      expect(checkPartOption('case', mini, selected())).toEqual(compatible)
+    })
+
+    it('leaves the options unmarked when the size data is missing', () => {
+      const motherboard = board('AM5', 'ATX board', 'DDR5', 2, 4, 'ATX')
+      const mystery = chassis(355, 170, 'Mystery case', [])
+      const listed = selected({ motherboard, case: mystery })
+
+      expect(checkPartOption('motherboard', motherboard, listed)).toEqual(
+        compatible,
+      )
+      expect(checkPartOption('case', mystery, listed)).toEqual(compatible)
+
+      const bare = {
+        ...motherboard,
+        formFactor: undefined,
+      } as unknown as Motherboard
+      const pcCase = chassis(355, 170, 'Fractal Design North')
+      const unlisted = selected({ motherboard: bare, case: pcCase })
+
+      expect(checkPartOption('motherboard', bare, unlisted)).toEqual(compatible)
+      expect(checkPartOption('case', pcCase, unlisted)).toEqual(compatible)
     })
 
     it('skips the processor and memory checks until a motherboard is selected', () => {

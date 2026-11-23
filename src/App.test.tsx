@@ -60,8 +60,64 @@ describe('App', () => {
       ),
     ).toBeTruthy()
     expect(
+      screen.getByText(
+        'Compatible. ASUS TUF Gaming B650-PLUS (ATX) fits Fractal Design North (ATX, Micro-ATX, Mini-ITX).',
+      ),
+    ).toBeTruthy()
+    expect(
       screen.getByRole('status', { name: 'Build status: All checks pass' }),
     ).toBeTruthy()
+  })
+
+  it('flags an ATX motherboard that a Mini-ITX case cannot take', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Case'), {
+      target: { value: 'case-nr200' },
+    })
+
+    expect(screen.getByText('Board does not fit.')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'ASUS TUF Gaming B650-PLUS (ATX) does not fit Cooler Master NR200P (Mini-ITX).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', {
+        name: 'Build status: 1 compatibility issue',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Cooler Master NR200P · Mini-ITX · 330mm GPU · 155mm cooler · $110 — incompatible: ATX motherboard',
+      }),
+    ).toHaveProperty('disabled', false)
+    expect(
+      screen.getByRole('option', {
+        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · ATX · 3 M.2 · 4 SATA · $179 — incompatible: case supports Mini-ITX',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Fractal Design North · ATX, Micro-ATX, Mini-ITX · 355mm GPU · 170mm cooler · $140',
+      }).className,
+    ).not.toContain('incompatible')
+
+    fireEvent.change(screen.getByLabelText('Case'), {
+      target: { value: '' },
+    })
+
+    expect(
+      screen.getByText('Select a case to check the motherboard form factor.'),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · ATX · 3 M.2 · 4 SATA · $179',
+      }).className,
+    ).not.toContain('incompatible')
   })
 
   it('reports a socket mismatch when the motherboard changes', () => {
