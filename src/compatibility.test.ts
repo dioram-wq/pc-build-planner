@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   checkCaseClearance,
   checkCpuSocket,
+  checkMemoryCapacity,
   checkMemoryType,
   checkMotherboardFormFactor,
   checkPowerSupply,
@@ -201,6 +202,370 @@ describe('checkMemoryType', () => {
           ),
         ).compatible,
       ).toBe(false)
+    }
+  })
+})
+
+describe('checkMemoryCapacity', () => {
+  const vengeance = () =>
+    kit('DDR5', 'Corsair Vengeance 32GB DDR5-6000', 2, 32)
+  const b650 = () =>
+    board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 3, 4, 'ATX', 4, 192)
+  const compact = () =>
+    board('AM5', 'ASRock B650M-HDV/M.2', 'DDR5', 1, 4, 'Micro-ATX', 2, 96)
+
+  it('accepts a kit that fits the slots and the maximum', () => {
+    expect(checkMemoryCapacity(vengeance(), b650())).toEqual({
+      status: 'ok',
+      moduleCount: 'ok',
+      capacity: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts a kit that matches the slot count and the maximum exactly', () => {
+    expect(
+      checkMemoryCapacity(
+        kit('DDR5', 'Exact kit', 2, 64),
+        board('AM5', 'Exact board', 'DDR5', 2, 4, 'ATX', 2, 64),
+      ),
+    ).toEqual({
+      status: 'ok',
+      moduleCount: 'ok',
+      capacity: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts a single module in a single slot', () => {
+    expect(
+      checkMemoryCapacity(
+        kit('DDR5', 'Single stick', 1, 16),
+        board('AM5', 'One slot', 'DDR5', 1, 2, 'Mini-ITX', 1, 32),
+      ),
+    ).toEqual({
+      status: 'ok',
+      moduleCount: 'ok',
+      capacity: 'ok',
+      issues: [],
+    })
+  })
+
+  it('marks a kit with too many modules and names both counts', () => {
+    expect(
+      checkMemoryCapacity(
+        kit('DDR5', 'Corsair Vengeance 64GB DDR5-5600', 4, 64),
+        compact(),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      moduleCount: 'too-many',
+      capacity: 'ok',
+      issues: [
+        {
+          code: 'memory-too-many-modules',
+          message:
+            'Corsair Vengeance 64GB DDR5-5600 (4 modules) does not fit ASRock B650M-HDV/M.2 (2 DIMM slots).',
+        },
+      ],
+    })
+  })
+
+  it('treats one module over the slot count as a miss', () => {
+    const result = checkMemoryCapacity(
+      kit('DDR5', 'Sample memory', 3, 48),
+      board('AM5', 'Sample motherboard', 'DDR5', 2, 4, 'ATX', 2, 128),
+    )
+
+    expect(result.moduleCount).toBe('too-many')
+    expect(result.capacity).toBe('ok')
+    expect(result.issues.map((issue) => issue.code)).toEqual([
+      'memory-too-many-modules',
+    ])
+  })
+
+  it('names a single module and a single slot in the singular', () => {
+    expect(
+      checkMemoryCapacity(
+        kit('DDR5', 'Two sticks', 2, 32),
+        board('AM5', 'Solo slot', 'DDR5', 1, 2, 'Mini-ITX', 1, 64),
+      ).issues,
+    ).toEqual([
+      {
+        code: 'memory-too-many-modules',
+        message:
+          'Two sticks (2 modules) does not fit Solo slot (1 DIMM slot).',
+      },
+    ])
+  })
+
+  it('marks a kit over the maximum and names both sizes', () => {
+    expect(
+      checkMemoryCapacity(
+        kit('DDR5', 'Kingston Fury Beast 128GB DDR5-5600', 2, 128),
+        compact(),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      moduleCount: 'ok',
+      capacity: 'over',
+      issues: [
+        {
+          code: 'memory-over-capacity',
+          message:
+            'Kingston Fury Beast 128GB DDR5-5600 (128GB) is more than ASRock B650M-HDV/M.2 supports (96GB).',
+        },
+      ],
+    })
+  })
+
+  it('treats one gigabyte over the maximum as a miss', () => {
+    const result = checkMemoryCapacity(
+      kit('DDR5', 'Sample memory', 2, 97),
+      compact(),
+    )
+
+    expect(result.capacity).toBe('over')
+    expect(result.moduleCount).toBe('ok')
+    expect(result.status).toBe('unsupported')
+  })
+
+  it('reports both problems when the kit misses the slots and the maximum', () => {
+    expect(
+      checkMemoryCapacity(
+        kit('DDR5', 'Large kit', 4, 128),
+        compact(),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      moduleCount: 'too-many',
+      capacity: 'over',
+      issues: [
+        {
+          code: 'memory-too-many-modules',
+          message:
+            'Large kit (4 modules) does not fit ASRock B650M-HDV/M.2 (2 DIMM slots).',
+        },
+        {
+          code: 'memory-over-capacity',
+          message:
+            'Large kit (128GB) is more than ASRock B650M-HDV/M.2 supports (96GB).',
+        },
+      ],
+    })
+  })
+
+  it('rejects any populated kit when the board lists no DIMM slots', () => {
+    expect(
+      checkMemoryCapacity(
+        kit('DDR5', 'Sample memory', 1, 16),
+        board('AM5', 'Soldered board', 'DDR5', 1, 2, 'Mini-ITX', 0, 32),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      moduleCount: 'too-many',
+      capacity: 'ok',
+      issues: [
+        {
+          code: 'memory-too-many-modules',
+          message:
+            'Sample memory (1 module) does not fit Soldered board (0 DIMM slots).',
+        },
+      ],
+    })
+  })
+
+  it('reports a kit that does not list a module count', () => {
+    expect(
+      checkMemoryCapacity(
+        { name: 'Unlisted kit', capacityGb: 32 },
+        compact(),
+      ),
+    ).toEqual({
+      status: 'missing',
+      moduleCount: 'skipped',
+      capacity: 'ok',
+      issues: [
+        {
+          code: 'memory-modules-missing',
+          message: 'Unlisted kit does not list a module count.',
+        },
+      ],
+    })
+  })
+
+  it('reports a board that does not list DIMM slots', () => {
+    expect(
+      checkMemoryCapacity(vengeance(), {
+        name: 'Mystery board',
+        maxMemoryGb: 128,
+      }),
+    ).toEqual({
+      status: 'missing',
+      moduleCount: 'skipped',
+      capacity: 'ok',
+      issues: [
+        {
+          code: 'memory-modules-missing',
+          message: 'Mystery board does not list DIMM slots.',
+        },
+      ],
+    })
+  })
+
+  it('reports a kit that does not list a capacity', () => {
+    expect(
+      checkMemoryCapacity({ name: 'Unlisted kit', modules: 2 }, b650()),
+    ).toEqual({
+      status: 'missing',
+      moduleCount: 'ok',
+      capacity: 'skipped',
+      issues: [
+        {
+          code: 'memory-capacity-missing',
+          message: 'Unlisted kit does not list a capacity.',
+        },
+      ],
+    })
+  })
+
+  it('reports a board that does not list a maximum memory size', () => {
+    expect(
+      checkMemoryCapacity(vengeance(), {
+        name: 'Mystery board',
+        dimmSlots: 4,
+      }),
+    ).toEqual({
+      status: 'missing',
+      moduleCount: 'ok',
+      capacity: 'skipped',
+      issues: [
+        {
+          code: 'memory-capacity-missing',
+          message: 'Mystery board does not list a maximum memory size.',
+        },
+      ],
+    })
+  })
+
+  it('reports both parts when neither lists modules or capacity', () => {
+    expect(
+      checkMemoryCapacity(
+        { name: 'Unlisted kit' },
+        { name: 'Mystery board' },
+      ),
+    ).toEqual({
+      status: 'missing',
+      moduleCount: 'skipped',
+      capacity: 'skipped',
+      issues: [
+        {
+          code: 'memory-modules-missing',
+          message:
+            'Unlisted kit does not list a module count, and Mystery board does not list DIMM slots.',
+        },
+        {
+          code: 'memory-capacity-missing',
+          message:
+            'Unlisted kit does not list a capacity, and Mystery board does not list a maximum memory size.',
+        },
+      ],
+    })
+  })
+
+  it('keeps a real miss when the other figure is missing', () => {
+    expect(
+      checkMemoryCapacity(
+        { name: 'Four stick kit', modules: 4 },
+        { name: 'Compact board', dimmSlots: 2 },
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      moduleCount: 'too-many',
+      capacity: 'skipped',
+      issues: [
+        {
+          code: 'memory-too-many-modules',
+          message:
+            'Four stick kit (4 modules) does not fit Compact board (2 DIMM slots).',
+        },
+        {
+          code: 'memory-capacity-missing',
+          message:
+            'Four stick kit does not list a capacity, and Compact board does not list a maximum memory size.',
+        },
+      ],
+    })
+
+    expect(
+      checkMemoryCapacity(
+        { name: 'Huge kit', capacityGb: 128 },
+        { name: 'Compact board', maxMemoryGb: 96 },
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      moduleCount: 'skipped',
+      capacity: 'over',
+      issues: [
+        {
+          code: 'memory-modules-missing',
+          message:
+            'Huge kit does not list a module count, and Compact board does not list DIMM slots.',
+        },
+        {
+          code: 'memory-over-capacity',
+          message:
+            'Huge kit (128GB) is more than Compact board supports (96GB).',
+        },
+      ],
+    })
+  })
+
+  it('treats an unusable module count or slot count as missing data', () => {
+    for (const modules of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const result = checkMemoryCapacity(
+        { name: 'Odd kit', modules, capacityGb: 32 },
+        b650(),
+      )
+      expect(result.moduleCount).toBe('skipped')
+      expect(result.status).toBe('missing')
+    }
+
+    for (const dimmSlots of [-1, 1.5, Number.NaN]) {
+      const result = checkMemoryCapacity(vengeance(), {
+        name: 'Odd board',
+        dimmSlots,
+        maxMemoryGb: 192,
+      })
+      expect(result.moduleCount).toBe('skipped')
+      expect(result.issues[0]?.message).toBe(
+        'Odd board does not list DIMM slots.',
+      )
+    }
+  })
+
+  it('treats an unusable capacity or maximum as missing data', () => {
+    for (const capacityGb of [0, -4, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const result = checkMemoryCapacity(
+        { name: 'Odd kit', modules: 2, capacityGb },
+        b650(),
+      )
+      expect(result.capacity).toBe('skipped')
+      expect(result.issues.map((issue) => issue.code)).toEqual([
+        'memory-capacity-missing',
+      ])
+    }
+
+    for (const maxMemoryGb of [0, -1, Number.NaN]) {
+      const result = checkMemoryCapacity(vengeance(), {
+        name: 'Odd board',
+        dimmSlots: 4,
+        maxMemoryGb,
+      })
+      expect(result.capacity).toBe('skipped')
+      expect(result.issues[0]?.message).toBe(
+        'Odd board does not list a maximum memory size.',
+      )
     }
   })
 })
@@ -949,6 +1314,51 @@ describe('sample catalog', () => {
         true,
       )
     }
+  })
+
+  it('records module counts and capacity on every kit, and slots and a maximum on every board', () => {
+    expect(memory.length).toBeGreaterThan(0)
+    for (const part of memory) {
+      expect(Number.isInteger(part.modules)).toBe(true)
+      expect(part.modules).toBeGreaterThan(0)
+      expect(part.capacityGb).toBeGreaterThan(0)
+    }
+
+    for (const part of motherboards) {
+      expect(Number.isInteger(part.dimmSlots)).toBe(true)
+      expect(part.dimmSlots).toBeGreaterThan(0)
+      expect(part.maxMemoryGb).toBeGreaterThan(0)
+    }
+  })
+
+  it('includes a kit that fits, one with too many modules, and one over the maximum', () => {
+    const compact = motherboards.find((part) => part.id === 'board-b650m')
+    const full = motherboards.find((part) => part.id === 'board-b650')
+    const pair = memory.find((part) => part.id === 'mem-ddr5-6000')
+    const four = memory.find((part) => part.id === 'mem-ddr5-64')
+    const large = memory.find((part) => part.id === 'mem-ddr5-128')
+    if (!compact || !full || !pair || !four || !large) {
+      throw new Error('expected the memory capacity sample parts')
+    }
+
+    expect(checkMemoryCapacity(pair, compact)).toEqual({
+      status: 'ok',
+      moduleCount: 'ok',
+      capacity: 'ok',
+      issues: [],
+    })
+    expect(checkMemoryCapacity(four, full).status).toBe('ok')
+    expect(checkMemoryCapacity(large, full).status).toBe('ok')
+
+    const tooMany = checkMemoryCapacity(four, compact)
+    expect(tooMany.status).toBe('unsupported')
+    expect(tooMany.moduleCount).toBe('too-many')
+    expect(tooMany.capacity).toBe('ok')
+
+    const over = checkMemoryCapacity(large, compact)
+    expect(over.status).toBe('unsupported')
+    expect(over.moduleCount).toBe('ok')
+    expect(over.capacity).toBe('over')
   })
 
   it('pairs every sample drive with a motherboard that supports it', () => {

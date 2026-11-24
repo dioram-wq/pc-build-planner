@@ -284,6 +284,115 @@ describe('buildStatusSummary', () => {
     )
   })
 
+  it('counts a kit with too many modules', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const compact = board(
+      'AM5',
+      'ASRock B650M-HDV/M.2',
+      'DDR5',
+      1,
+      4,
+      'Micro-ATX',
+      2,
+      96,
+    )
+    const checks = passing()
+    checks.memoryCapacity = checkMemoryCapacity(
+      kit('DDR5', 'Corsair Vengeance 64GB DDR5-5600', 4, 64),
+      compact,
+    )
+
+    expect(checks.memoryCapacity.moduleCount).toBe('too-many')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: compact }, checks),
+    ).toEqual({ level: 'issue', text: '1 compatibility issue' })
+  })
+
+  it('counts a kit over the memory maximum', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const compact = board(
+      'AM5',
+      'ASRock B650M-HDV/M.2',
+      'DDR5',
+      1,
+      4,
+      'Micro-ATX',
+      2,
+      96,
+    )
+    const checks = passing()
+    checks.memoryCapacity = checkMemoryCapacity(
+      kit('DDR5', 'Kingston Fury Beast 128GB DDR5-5600', 2, 128),
+      compact,
+    )
+
+    expect(checks.memoryCapacity.capacity).toBe('over')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: compact }, checks),
+    ).toEqual({ level: 'issue', text: '1 compatibility issue' })
+  })
+
+  it('counts both a module miss and a capacity miss', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const compact = board(
+      'AM5',
+      'ASRock B650M-HDV/M.2',
+      'DDR5',
+      1,
+      4,
+      'Micro-ATX',
+      2,
+      96,
+    )
+    const checks = passing()
+    checks.memoryCapacity = checkMemoryCapacity(
+      kit('DDR5', 'Large kit', 4, 128),
+      compact,
+    )
+
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: compact }, checks),
+    ).toEqual({ level: 'issue', text: '2 compatibility issues' })
+  })
+
+  it('ignores memory capacity the parts do not list', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4)
+    const checks = passing()
+
+    checks.memoryCapacity = checkMemoryCapacity(
+      { name: 'Unlisted kit' },
+      { name: 'Mystery board' },
+    )
+    expect(checks.memoryCapacity.status).toBe('missing')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.memoryCapacity = checkMemoryCapacity(
+      { name: 'Unlisted kit', modules: 2 },
+      { name: 'Mystery board', dimmSlots: 4, maxMemoryGb: 128 },
+    )
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+  })
+
+  it('still counts a listed miss when the other memory figure is missing', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4)
+    const checks = passing()
+    checks.memoryCapacity = checkMemoryCapacity(
+      { name: 'Four stick kit', modules: 4 },
+      { name: 'Compact board', dimmSlots: 2 },
+    )
+
+    expect(checks.memoryCapacity.status).toBe('unsupported')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'issue', text: '1 compatibility issue' })
+  })
+
   it('counts a motherboard the case cannot take', () => {
     const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
     const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4, 'ATX')

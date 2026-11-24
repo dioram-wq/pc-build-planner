@@ -46,6 +46,11 @@ describe('App', () => {
     expect(screen.getByText('Compatible. Both parts use DDR5.')).toBeTruthy()
     expect(
       screen.getByText(
+        'Compatible. Corsair Vengeance 32GB DDR5-6000 (2 modules, 32GB) fits ASUS TUF Gaming B650-PLUS (4 DIMM slots, 192GB).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(
         'Estimated draw is 280W. Corsair CX550 (550W) meets the 350W recommendation.',
       ),
     ).toBeTruthy()
@@ -154,6 +159,111 @@ describe('App', () => {
     expect(screen.getByText('Compatible. Both parts use AM5.')).toBeTruthy()
     expect(
       screen.getByRole('status', { name: 'Build status: 1 compatibility issue' }),
+    ).toBeTruthy()
+  })
+
+  it('flags a kit with more modules than the motherboard has slots', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Motherboard'), {
+      target: { value: 'board-b650m' },
+    })
+    fireEvent.change(screen.getByLabelText('Memory'), {
+      target: { value: 'mem-ddr5-64' },
+    })
+
+    expect(screen.getByText('Too many modules.')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'Corsair Vengeance 64GB DDR5-5600 (4 modules) does not fit ASRock B650M-HDV/M.2 (2 DIMM slots).',
+      ),
+    ).toBeTruthy()
+    expect(screen.getByText('Compatible. Both parts use AM5.')).toBeTruthy()
+    expect(screen.getByText('Compatible. Both parts use DDR5.')).toBeTruthy()
+    expect(
+      screen.getByRole('status', {
+        name: 'Build status: 1 compatibility issue',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Corsair Vengeance 64GB DDR5-5600 · DDR5 · 4 modules · 64GB · $169 — incompatible: 2 DIMM slots',
+      }),
+    ).toHaveProperty('disabled', false)
+    expect(
+      screen.getByRole('option', {
+        name: 'ASRock B650M-HDV/M.2 · AM5 · DDR5 · Micro-ATX · 2 DIMM slots · 96GB · 1 M.2 · 4 SATA · $99 — incompatible: 4 modules',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Corsair Vengeance 32GB DDR5-6000 · DDR5 · 2 modules · 32GB · $109',
+      }).className,
+    ).not.toContain('incompatible')
+
+    fireEvent.change(screen.getByLabelText('Motherboard'), {
+      target: { value: 'board-b650' },
+    })
+
+    expect(
+      screen.getByText(
+        'Compatible. Corsair Vengeance 64GB DDR5-5600 (4 modules, 64GB) fits ASUS TUF Gaming B650-PLUS (4 DIMM slots, 192GB).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Corsair Vengeance 64GB DDR5-5600 · DDR5 · 4 modules · 64GB · $169',
+      }).className,
+    ).not.toContain('incompatible')
+  })
+
+  it('flags a kit over the motherboard memory maximum', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Motherboard'), {
+      target: { value: 'board-b650m' },
+    })
+    fireEvent.change(screen.getByLabelText('Memory'), {
+      target: { value: 'mem-ddr5-128' },
+    })
+
+    expect(screen.getByText('Over the memory limit.')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'Kingston Fury Beast 128GB DDR5-5600 (128GB) is more than ASRock B650M-HDV/M.2 supports (96GB).',
+      ),
+    ).toBeTruthy()
+    expect(screen.getByText('Compatible. Both parts use DDR5.')).toBeTruthy()
+    expect(
+      screen.getByRole('status', {
+        name: 'Build status: 1 compatibility issue',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Kingston Fury Beast 128GB DDR5-5600 · DDR5 · 2 modules · 128GB · $429 — incompatible: 96GB memory limit',
+      }),
+    ).toHaveProperty('disabled', false)
+    expect(
+      screen.getByRole('option', {
+        name: 'ASRock B650M-HDV/M.2 · AM5 · DDR5 · Micro-ATX · 2 DIMM slots · 96GB · 1 M.2 · 4 SATA · $99 — incompatible: 128GB memory',
+      }),
+    ).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Motherboard'), {
+      target: { value: 'board-b650' },
+    })
+
+    expect(
+      screen.getByText(
+        'Compatible. Kingston Fury Beast 128GB DDR5-5600 (2 modules, 128GB) fits ASUS TUF Gaming B650-PLUS (4 DIMM slots, 192GB).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
     ).toBeTruthy()
   })
 

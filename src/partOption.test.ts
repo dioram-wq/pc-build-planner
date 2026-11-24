@@ -168,6 +168,37 @@ describe('checkPartOption', () => {
       expect(checkPartOption('memory', ddr5(), matching())).toEqual(compatible)
     })
 
+    it('accepts a kit that fits the slots and the maximum', () => {
+      const motherboard = board(
+        'AM5',
+        'ASRock B650M-HDV/M.2',
+        'DDR5',
+        1,
+        4,
+        'Micro-ATX',
+        2,
+        96,
+      )
+      const memory = kit('DDR5', 'Corsair Vengeance 32GB DDR5-6000', 2, 32)
+      const build = selected({ motherboard, memory })
+
+      expect(checkPartOption('memory', memory, build)).toEqual(compatible)
+      expect(checkPartOption('motherboard', motherboard, build)).toEqual(
+        compatible,
+      )
+    })
+
+    it('accepts a kit that matches the slot count and the maximum exactly', () => {
+      const motherboard = board('AM5', 'Exact board', 'DDR5', 2, 4, 'ATX', 2, 64)
+      const memory = kit('DDR5', 'Exact kit', 2, 64)
+      const build = selected({ motherboard, memory })
+
+      expect(checkPartOption('memory', memory, build)).toEqual(compatible)
+      expect(checkPartOption('motherboard', motherboard, build)).toEqual(
+        compatible,
+      )
+    })
+
     it('accepts a graphics card and cooler that fit the case exactly', () => {
       const fit = chassis(240, 70)
       const build = selected({
@@ -275,6 +306,106 @@ describe('checkPartOption', () => {
           selected({ motherboard: board('AM5', 'B650', 'DDR5') }),
         ),
       ).toEqual({ compatible: false, conflicts: ['memory DDR5'] })
+    })
+
+    it('marks a kit with too many modules, and the board for that kit', () => {
+      const motherboard = board(
+        'AM5',
+        'ASRock B650M-HDV/M.2',
+        'DDR5',
+        1,
+        4,
+        'Micro-ATX',
+        2,
+        96,
+      )
+      const memory = kit('DDR5', 'Corsair Vengeance 64GB DDR5-5600', 4, 64)
+
+      expect(
+        checkPartOption('memory', memory, selected({ motherboard })),
+      ).toEqual({ compatible: false, conflicts: ['2 DIMM slots'] })
+      expect(
+        checkPartOption('motherboard', motherboard, selected({ memory })),
+      ).toEqual({ compatible: false, conflicts: ['4 modules'] })
+    })
+
+    it('marks a kit over the maximum, and the board for that kit', () => {
+      const motherboard = board(
+        'AM5',
+        'ASRock B650M-HDV/M.2',
+        'DDR5',
+        1,
+        4,
+        'Micro-ATX',
+        2,
+        96,
+      )
+      const memory = kit('DDR5', 'Kingston Fury Beast 128GB DDR5-5600', 2, 128)
+
+      expect(
+        checkPartOption('memory', memory, selected({ motherboard })),
+      ).toEqual({ compatible: false, conflicts: ['96GB memory limit'] })
+      expect(
+        checkPartOption('motherboard', motherboard, selected({ memory })),
+      ).toEqual({ compatible: false, conflicts: ['128GB memory'] })
+    })
+
+    it('marks one module and one gigabyte over the limit', () => {
+      const motherboard = board('AM5', 'Compact board', 'DDR5', 1, 2, 'ATX', 2, 64)
+      const memory = kit('DDR5', 'Tall kit', 3, 65)
+
+      expect(
+        checkPartOption('memory', memory, selected({ motherboard })),
+      ).toEqual({
+        compatible: false,
+        conflicts: ['2 DIMM slots', '64GB memory limit'],
+      })
+      expect(
+        checkPartOption('motherboard', motherboard, selected({ memory })),
+      ).toEqual({
+        compatible: false,
+        conflicts: ['3 modules', '65GB memory'],
+      })
+    })
+
+    it('lists the memory type before capacity on a kit', () => {
+      expect(
+        checkPartOption(
+          'memory',
+          kit('DDR4', 'Old kit', 4, 128),
+          selected({
+            motherboard: board('AM5', 'B650', 'DDR5', 2, 4, 'ATX', 2, 96),
+          }),
+        ),
+      ).toEqual({
+        compatible: false,
+        conflicts: ['memory DDR5', '2 DIMM slots', '96GB memory limit'],
+      })
+    })
+
+    it('lists memory capacity after the type and before storage', () => {
+      expect(
+        checkPartOption(
+          'motherboard',
+          board('AM4', 'Tiny board', 'DDR4', 0, 0, 'ATX', 2, 64),
+          selected({
+            cpu: cpu('AM5'),
+            memory: kit('DDR5', 'Large kit', 4, 128),
+            storage: drive('M.2 NVMe'),
+            case: chassis(330, 155, 'Mini case', ['Mini-ITX']),
+          }),
+        ),
+      ).toEqual({
+        compatible: false,
+        conflicts: [
+          'socket AM5',
+          'memory DDR5',
+          '4 modules',
+          '128GB memory',
+          'no M.2 slots',
+          'case supports Mini-ITX',
+        ],
+      })
     })
 
     it('names the kit type a motherboard does not match', () => {
@@ -595,6 +726,57 @@ describe('checkPartOption', () => {
 
       expect(checkPartOption('motherboard', bare, unlisted)).toEqual(compatible)
       expect(checkPartOption('case', pcCase, unlisted)).toEqual(compatible)
+    })
+
+    it('skips memory capacity until a motherboard or a kit is selected', () => {
+      const huge = kit('DDR5', 'Huge', 4, 256)
+      const tiny = board('AM5', 'Tiny', 'DDR5', 1, 4, 'ATX', 2, 32)
+
+      expect(checkPartOption('memory', huge, selected())).toEqual(compatible)
+      expect(checkPartOption('motherboard', tiny, selected())).toEqual(
+        compatible,
+      )
+    })
+
+    it('leaves the options unmarked when the capacity data is missing', () => {
+      const motherboard = board('AM5', 'ATX board', 'DDR5', 2, 4, 'ATX', 2, 64)
+      const memory = kit('DDR5', 'Large kit', 4, 128)
+      const bareBoard = {
+        ...motherboard,
+        dimmSlots: undefined,
+        maxMemoryGb: undefined,
+      } as unknown as Motherboard
+      const bareKit = {
+        ...memory,
+        modules: undefined,
+        capacityGb: undefined,
+      } as unknown as Memory
+      const listedBoard = selected({ motherboard: bareBoard, memory })
+      const listedKit = selected({ motherboard, memory: bareKit })
+
+      expect(checkPartOption('memory', memory, listedBoard)).toEqual(compatible)
+      expect(checkPartOption('motherboard', bareBoard, listedBoard)).toEqual(
+        compatible,
+      )
+      expect(checkPartOption('memory', bareKit, listedKit)).toEqual(compatible)
+      expect(checkPartOption('motherboard', motherboard, listedKit)).toEqual(
+        compatible,
+      )
+    })
+
+    it('marks only the capacity figure that is listed and fails', () => {
+      const motherboard = {
+        ...board('AM5', 'Compact board', 'DDR5', 1, 2, 'ATX', 2, 64),
+        maxMemoryGb: undefined,
+      } as unknown as Motherboard
+      const memory = kit('DDR5', 'Four sticks', 4, 32)
+
+      expect(
+        checkPartOption('memory', memory, selected({ motherboard })),
+      ).toEqual({ compatible: false, conflicts: ['2 DIMM slots'] })
+      expect(
+        checkPartOption('motherboard', motherboard, selected({ memory })),
+      ).toEqual({ compatible: false, conflicts: ['4 modules'] })
     })
 
     it('skips the processor and memory checks until a motherboard is selected', () => {
