@@ -17,10 +17,11 @@ Node.js 22 and npm 11 install cleanly. npm 10 can fail while resolving Vitest's 
 
 ## Compatibility
 
-The planner currently checks six rules:
+The planner currently checks seven rules:
 
 - **CPU socket.** The processor socket must match the motherboard socket. The sample catalog covers AM4, AM5, LGA1700, and LGA1851.
 - **Memory type.** The memory type must match the type the motherboard takes. The sample catalog covers DDR4 and DDR5.
+- **Memory capacity.** The kit's module count has to be no higher than the motherboard's DIMM slots, and its total capacity no higher than the maximum the board supports. Matching either limit exactly is ok. More modules than there are slots, or more gigabytes than the board allows, is a conflict. When the kit or the board does not list a module count, a capacity, a slot count, or a maximum, that comparison is skipped and does not count as a conflict. The sample catalog includes a two-slot board, a four-module kit that needs more slots, and a kit over that board's maximum.
 - **Power supply wattage.** Estimated draw is the CPU TDP, plus graphics-card board power when a card is selected, plus 100W for the motherboard, memory, storage, and fans. The supply should cover that draw with about 25% headroom. Meeting the headroom is ok, covering the draw without that headroom is tight, and falling short of the draw is insufficient. With no supply selected, the planner still shows the estimate.
 - **Case clearance.** A graphics card has to be no longer than the case allows, and a CPU cooler no taller than the case allows. A card over that length is too long, and a cooler over that height is too tall. Matching a limit exactly is ok. With no case selected, the planner asks for one. If the card or the cooler is not selected, that comparison is skipped.
 - **Storage interface.** An M.2 NVMe drive needs at least one M.2 slot on the motherboard, and a SATA drive needs at least one SATA port. With no drive selected, the planner asks for one. The sample catalog covers both interfaces.
@@ -28,13 +29,13 @@ The planner currently checks six rules:
 
 ## Build status
 
-A line at the top of the build summarizes the compatibility checks. Until a processor and a motherboard are both selected, it reads "Pick a CPU and motherboard to start". After that, each conflict counts as one compatibility issue, using the same conflicts the part lists mark as incompatible: a socket mismatch, a memory mismatch, a graphics card that is too long, a cooler that is too tall, a power supply below the estimated draw, a drive the motherboard cannot take, and a motherboard the case cannot take. One conflict reads "1 compatibility issue". More than one reads "2 compatibility issues", and so on. When none of those apply, the line reads "All checks pass". A supply that only misses the recommended headroom, a graphics card, cooler, case, power supply, or drive that is not selected yet, and a board or case that does not list a form factor, stay out of that count. The lines under the part lists still describe those cases.
+A line at the top of the build summarizes the compatibility checks. Until a processor and a motherboard are both selected, it reads "Pick a CPU and motherboard to start". After that, each conflict counts as one compatibility issue, using the same conflicts the part lists mark as incompatible: a socket mismatch, a memory mismatch, a memory kit with too many modules or more capacity than the board allows, a graphics card that is too long, a cooler that is too tall, a power supply below the estimated draw, a drive the motherboard cannot take, and a motherboard the case cannot take. One conflict reads "1 compatibility issue". More than one reads "2 compatibility issues", and so on. When none of those apply, the line reads "All checks pass". A supply that only misses the recommended headroom, a graphics card, cooler, case, power supply, or drive that is not selected yet, a board or case that does not list a form factor, and a kit or board that does not list memory capacity, stay out of that count. The lines under the part lists still describe those cases.
 
 ## Incompatible options
 
 Each part list marks an option that conflicts with the parts already chosen, using the same rules as the status lines. The label gains a text suffix such as "— incompatible: socket AM5", so the warning is not color alone, and the option can still be selected. A comparison with nothing selected yet leaves that option unmarked.
 
-A processor is marked when its socket differs from the selected motherboard, and a motherboard is marked when its socket differs from the selected processor. Memory is marked the same way for DDR4 and DDR5. A graphics card is marked when it is longer than the selected case allows, a cooler when it is taller, and a case when the selected card or cooler does not fit. Matching a limit exactly stays unmarked. A drive is marked when the motherboard has no M.2 slot or SATA port for its interface, and a motherboard is marked when it cannot take the selected drive. A motherboard is also marked when the selected case does not list its form factor, and a case is marked when it does not list the selected motherboard. A power supply is marked when its wattage is below the estimated draw. A supply that covers the draw but is short of the recommended headroom keeps its ordinary label. A board or case that does not list a size stays unmarked.
+A processor is marked when its socket differs from the selected motherboard, and a motherboard is marked when its socket differs from the selected processor. Memory is marked the same way for DDR4 and DDR5, and when the kit has more modules than the board has DIMM slots or more capacity than the board supports. A motherboard is marked for that kit in the same way. A graphics card is marked when it is longer than the selected case allows, a cooler when it is taller, and a case when the selected card or cooler does not fit. Matching a limit exactly stays unmarked. A drive is marked when the motherboard has no M.2 slot or SATA port for its interface, and a motherboard is marked when it cannot take the selected drive. A motherboard is also marked when the selected case does not list its form factor, and a case is marked when it does not list the selected motherboard. A power supply is marked when its wattage is below the estimated draw. A supply that covers the draw but is short of the recommended headroom keeps its ordinary label. A board or case that does not list a size, and a kit or board that does not list memory capacity, stay unmarked.
 
 ## Price
 
@@ -60,6 +61,7 @@ The address bar stores the selected part IDs in a short query string. Changing a
 - [x] Break the running total down by selected part
 - [x] Overall build status summary
 - [x] Motherboard form factor against the case
+- [x] Memory capacity and DIMM slots against the motherboard
 
 ## Note
 
