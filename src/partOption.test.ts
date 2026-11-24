@@ -31,6 +31,8 @@ function board(
   m2Slots = 2,
   sataPorts = 4,
   formFactor: BoardFormFactor = 'ATX',
+  dimmSlots = 4,
+  maxMemoryGb = 192,
 ): Motherboard {
   return {
     id: `board-${socket}-${memoryType}`,
@@ -40,11 +42,18 @@ function board(
     m2Slots,
     sataPorts,
     formFactor,
+    dimmSlots,
+    maxMemoryGb,
   }
 }
 
-function kit(memoryType: MemoryType, name = 'Sample memory'): Memory {
-  return { id: `mem-${memoryType}`, name, memoryType }
+function kit(
+  memoryType: MemoryType,
+  name = 'Sample memory',
+  modules = 2,
+  capacityGb = 32,
+): Memory {
+  return { id: `mem-${memoryType}`, name, memoryType, modules, capacityGb }
 }
 
 function card(boardPowerWatts: number, name = 'Sample GPU', lengthMm = 240): Gpu {

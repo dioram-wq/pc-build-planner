@@ -49,6 +49,8 @@ const motherboardCatalog = [
     m2Slots: 3,
     sataPorts: 4,
     formFactor: 'ATX',
+    dimmSlots: 4,
+    maxMemoryGb: 192,
   },
   {
     id: 'board-b550',
@@ -58,6 +60,8 @@ const motherboardCatalog = [
     m2Slots: 2,
     sataPorts: 6,
     formFactor: 'ATX',
+    dimmSlots: 4,
+    maxMemoryGb: 128,
   },
   {
     id: 'board-z790',
@@ -67,6 +71,8 @@ const motherboardCatalog = [
     m2Slots: 4,
     sataPorts: 6,
     formFactor: 'ATX',
+    dimmSlots: 4,
+    maxMemoryGb: 192,
   },
   {
     id: 'board-z890',
@@ -76,6 +82,19 @@ const motherboardCatalog = [
     m2Slots: 5,
     sataPorts: 4,
     formFactor: 'ATX',
+    dimmSlots: 4,
+    maxMemoryGb: 192,
+  },
+  {
+    id: 'board-b650m',
+    name: 'ASRock B650M-HDV/M.2',
+    socket: 'AM5',
+    memoryType: 'DDR5',
+    m2Slots: 1,
+    sataPorts: 4,
+    formFactor: 'Micro-ATX',
+    dimmSlots: 2,
+    maxMemoryGb: 96,
   },
 ] as const satisfies readonly Motherboard[]
 
@@ -86,21 +105,43 @@ const memoryCatalog = [
     id: 'mem-ddr5-6000',
     name: 'Corsair Vengeance 32GB DDR5-6000',
     memoryType: 'DDR5',
+    modules: 2,
+    capacityGb: 32,
   },
   {
     id: 'mem-ddr5-5600',
     name: 'G.Skill Flare X5 32GB DDR5-5600',
     memoryType: 'DDR5',
+    modules: 2,
+    capacityGb: 32,
   },
   {
     id: 'mem-ddr4-3600',
     name: 'Corsair Vengeance LPX 32GB DDR4-3600',
     memoryType: 'DDR4',
+    modules: 2,
+    capacityGb: 32,
   },
   {
     id: 'mem-ddr4-3200',
     name: 'G.Skill Ripjaws V 32GB DDR4-3200',
     memoryType: 'DDR4',
+    modules: 2,
+    capacityGb: 32,
+  },
+  {
+    id: 'mem-ddr5-64',
+    name: 'Corsair Vengeance 64GB DDR5-5600',
+    memoryType: 'DDR5',
+    modules: 4,
+    capacityGb: 64,
+  },
+  {
+    id: 'mem-ddr5-128',
+    name: 'Kingston Fury Beast 128GB DDR5-5600',
+    memoryType: 'DDR5',
+    modules: 2,
+    capacityGb: 128,
   },
 ] as const satisfies readonly Memory[]
 

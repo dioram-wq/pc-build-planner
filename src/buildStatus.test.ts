@@ -3,6 +3,7 @@ import { buildStatusSummary, type BuildStatusChecks } from './buildStatus.ts'
 import {
   checkCaseClearance,
   checkCpuSocket,
+  checkMemoryCapacity,
   checkMemoryType,
   checkMotherboardFormFactor,
   checkPowerSupply,
@@ -32,6 +33,8 @@ function board(
   m2Slots = 2,
   sataPorts = 4,
   formFactor: BoardFormFactor = 'ATX',
+  dimmSlots = 4,
+  maxMemoryGb = 192,
 ): Motherboard {
   return {
     id: `board-${socket}`,
@@ -41,11 +44,18 @@ function board(
     m2Slots,
     sataPorts,
     formFactor,
+    dimmSlots,
+    maxMemoryGb,
   }
 }
 
-function kit(memoryType: MemoryType, name = 'Sample memory'): Memory {
-  return { id: `mem-${memoryType}`, name, memoryType }
+function kit(
+  memoryType: MemoryType,
+  name = 'Sample memory',
+  modules = 2,
+  capacityGb = 32,
+): Memory {
+  return { id: `mem-${memoryType}`, name, memoryType, modules, capacityGb }
 }
 
 function card(
@@ -103,6 +113,7 @@ function checksFor(parts: {
   return {
     socket: checkCpuSocket(parts.cpu, parts.motherboard),
     memory: checkMemoryType(parts.memory, parts.motherboard),
+    memoryCapacity: checkMemoryCapacity(parts.memory, parts.motherboard),
     power: checkPowerSupply(parts.cpu, parts.gpu, parts.psu),
     clearance: checkCaseClearance(parts.pcCase, parts.gpu, parts.cooler),
     storage: checkStorageInterface(parts.storage, parts.motherboard),
@@ -130,6 +141,7 @@ describe('buildStatusSummary', () => {
         {
           socket: null,
           memory: null,
+          memoryCapacity: null,
           power: null,
           clearance: null,
           storage: null,
@@ -147,6 +159,7 @@ describe('buildStatusSummary', () => {
     const emptyChecks: BuildStatusChecks = {
       socket: null,
       memory: null,
+      memoryCapacity: null,
       power: null,
       clearance: null,
       storage: null,
@@ -176,6 +189,7 @@ describe('buildStatusSummary', () => {
       {
         socket: null,
         memory: null,
+        memoryCapacity: null,
         power: null,
         clearance: checkCaseClearance(
           chassis(270, 61, 'SilverStone SUGO SG13'),

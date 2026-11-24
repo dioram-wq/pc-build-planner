@@ -6,11 +6,14 @@ import {
 import {
   checkCaseClearance,
   checkCpuSocket,
+  checkMemoryCapacity,
   checkMemoryType,
   checkMotherboardFormFactor,
   checkPowerSupply,
   checkStorageInterface,
+  formatDimmSlots,
   formatFormFactorList,
+  formatModuleCount,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -188,6 +191,48 @@ function MemoryStatus({
   return (
     <div className="status bad" role="status">
       <p>Incompatible.</p>
+      <ul>
+        {result.issues.map((issue) => (
+          <li key={issue.code}>{issue.message}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function MemoryCapacityStatus({
+  memory,
+  motherboard,
+}: {
+  memory: Memory
+  motherboard: Motherboard
+}) {
+  const result = checkMemoryCapacity(memory, motherboard)
+
+  if (result.status === 'ok') {
+    return (
+      <p className="status ok" role="status">
+        {`Compatible. ${memory.name} (${formatModuleCount(memory.modules)}, ${memory.capacityGb}GB) fits ${motherboard.name} (${formatDimmSlots(motherboard.dimmSlots)}, ${motherboard.maxMemoryGb}GB).`}
+      </p>
+    )
+  }
+
+  let heading = 'Memory capacity unknown.'
+  let tone = 'missing'
+  if (result.moduleCount === 'too-many' && result.capacity === 'over') {
+    heading = 'Does not fit.'
+    tone = 'bad'
+  } else if (result.moduleCount === 'too-many') {
+    heading = 'Too many modules.'
+    tone = 'bad'
+  } else if (result.capacity === 'over') {
+    heading = 'Over the memory limit.'
+    tone = 'bad'
+  }
+
+  return (
+    <div className={`status ${tone}`} role="status">
+      <p>{heading}</p>
       <ul>
         {result.issues.map((issue) => (
           <li key={issue.code}>{issue.message}</li>
@@ -456,6 +501,7 @@ export default function App() {
     {
       socket: checkCpuSocket(cpu, motherboard),
       memory: checkMemoryType(selectedMemory, motherboard),
+      memoryCapacity: checkMemoryCapacity(selectedMemory, motherboard),
       power: checkPowerSupply(cpu, gpu, psu),
       clearance: checkCaseClearance(pcCase, gpu, cooler),
       storage: checkStorageInterface(drive, motherboard),
@@ -525,10 +571,11 @@ export default function App() {
         <p className="lede">
           Choose a processor, a motherboard, memory, a graphics card, a CPU
           cooler, a case, a power supply, and storage. The planner checks that
-          the CPU socket and the memory type match the board, that the supply
-          covers the estimated draw, that the case supports the motherboard
-          form factor, that the cooler and graphics card fit the case, and
-          that the motherboard supports the drive interface. A line
+          the CPU socket and the memory type match the board, that the memory
+          kit fits the board's slots and capacity, that the supply covers the
+          estimated draw, that the case supports the motherboard form factor,
+          that the cooler and graphics card fit the case, and that the
+          motherboard supports the drive interface. A line
           at the top of the build counts any compatibility issues. Options
           that conflict with the parts already chosen are marked in each list
           and can still be selected. Sample prices for the selected parts are
@@ -582,7 +629,7 @@ export default function App() {
                 <CatalogOption
                   key={part.id}
                   id={part.id}
-                  label={`${part.name} · ${part.socket} · ${part.memoryType} · ${part.formFactor} · ${part.m2Slots} M.2 · ${part.sataPorts} SATA · ${formatUsd(part.priceUsd)}`}
+                  label={`${part.name} · ${part.socket} · ${part.memoryType} · ${part.formFactor} · ${formatDimmSlots(part.dimmSlots)} · ${part.maxMemoryGb}GB · ${part.m2Slots} M.2 · ${part.sataPorts} SATA · ${formatUsd(part.priceUsd)}`}
                   conflicts={
                     checkPartOption('motherboard', part, selected).conflicts
                   }
@@ -603,7 +650,7 @@ export default function App() {
                 <CatalogOption
                   key={part.id}
                   id={part.id}
-                  label={`${part.name} · ${part.memoryType} · ${formatUsd(part.priceUsd)}`}
+                  label={`${part.name} · ${part.memoryType} · ${formatModuleCount(part.modules)} · ${part.capacityGb}GB · ${formatUsd(part.priceUsd)}`}
                   conflicts={checkPartOption('memory', part, selected).conflicts}
                 />
               ))}
@@ -713,6 +760,10 @@ export default function App() {
         <PriceBreakdown slots={priceSlots} />
         <SocketStatus cpu={cpu} motherboard={motherboard} />
         <MemoryStatus memory={selectedMemory} motherboard={motherboard} />
+        <MemoryCapacityStatus
+          memory={selectedMemory}
+          motherboard={motherboard}
+        />
         <PowerSupplyStatus cpu={cpu} gpu={gpu} psu={psu} />
         <FormFactorStatus motherboard={motherboard} pcCase={pcCase} />
         <ClearanceStatus pcCase={pcCase} gpu={gpu} cooler={cooler} />

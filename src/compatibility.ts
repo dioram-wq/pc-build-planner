@@ -19,12 +19,16 @@ export type Motherboard = {
   m2Slots: number
   sataPorts: number
   formFactor: BoardFormFactor
+  dimmSlots: number
+  maxMemoryGb: number
 }
 
 export type Memory = {
   id: string
   name: string
   memoryType: MemoryType
+  modules: number
+  capacityGb: number
 }
 
 export type SocketMismatch = {
@@ -80,6 +84,170 @@ export function checkMemoryType(
       },
     ],
   }
+}
+
+export type MemoryCapacityStatus = 'ok' | 'unsupported' | 'missing'
+
+export type MemoryModuleStatus = 'ok' | 'too-many' | 'skipped'
+
+export type MemorySizeStatus = 'ok' | 'over' | 'skipped'
+
+export type MemoryCapacityIssue = {
+  code:
+    | 'memory-too-many-modules'
+    | 'memory-over-capacity'
+    | 'memory-modules-missing'
+    | 'memory-capacity-missing'
+  message: string
+}
+
+export type MemoryCapacityCheck = {
+  status: MemoryCapacityStatus
+  moduleCount: MemoryModuleStatus
+  capacity: MemorySizeStatus
+  issues: MemoryCapacityIssue[]
+}
+
+export type MemoryCapacityKit = {
+  name: string
+  modules?: number | null
+  capacityGb?: number | null
+}
+
+export type MemoryCapacityBoard = {
+  name: string
+  dimmSlots?: number | null
+  maxMemoryGb?: number | null
+}
+
+export function formatModuleCount(modules: number): string {
+  return `${modules} ${modules === 1 ? 'module' : 'modules'}`
+}
+
+export function formatDimmSlots(slots: number): string {
+  return `${slots} ${slots === 1 ? 'DIMM slot' : 'DIMM slots'}`
+}
+
+function listedModuleCount(value: number | null | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
+    return null
+  }
+  return value
+}
+
+function listedDimmSlots(value: number | null | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    return null
+  }
+  return value
+}
+
+function listedCapacityGb(value: number | null | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return null
+  }
+  return value
+}
+
+export function checkMemoryCapacity(
+  memory: MemoryCapacityKit,
+  motherboard: MemoryCapacityBoard,
+): MemoryCapacityCheck {
+  const modules = listedModuleCount(memory.modules)
+  const slots = listedDimmSlots(motherboard.dimmSlots)
+  const capacityGb = listedCapacityGb(memory.capacityGb)
+  const maxMemoryGb = listedCapacityGb(motherboard.maxMemoryGb)
+
+  const issues: MemoryCapacityIssue[] = []
+  let moduleCount: MemoryModuleStatus = 'skipped'
+  let capacity: MemorySizeStatus = 'skipped'
+
+  if (modules != null && slots != null) {
+    if (modules > slots) {
+      moduleCount = 'too-many'
+      issues.push({
+        code: 'memory-too-many-modules',
+        message: `${memory.name} (${formatModuleCount(modules)}) does not fit ${motherboard.name} (${formatDimmSlots(slots)}).`,
+      })
+    } else {
+      moduleCount = 'ok'
+    }
+  } else {
+    issues.push({
+      code: 'memory-modules-missing',
+      message: missingModulesMessage(
+        memory.name,
+        motherboard.name,
+        modules != null,
+        slots != null,
+      ),
+    })
+  }
+
+  if (capacityGb != null && maxMemoryGb != null) {
+    if (capacityGb > maxMemoryGb) {
+      capacity = 'over'
+      issues.push({
+        code: 'memory-over-capacity',
+        message: `${memory.name} (${capacityGb}GB) is more than ${motherboard.name} supports (${maxMemoryGb}GB).`,
+      })
+    } else {
+      capacity = 'ok'
+    }
+  } else {
+    issues.push({
+      code: 'memory-capacity-missing',
+      message: missingCapacityMessage(
+        memory.name,
+        motherboard.name,
+        capacityGb != null,
+        maxMemoryGb != null,
+      ),
+    })
+  }
+
+  let status: MemoryCapacityStatus = 'ok'
+  if (moduleCount === 'too-many' || capacity === 'over') {
+    status = 'unsupported'
+  } else if (moduleCount === 'skipped' || capacity === 'skipped') {
+    status = 'missing'
+  }
+
+  return { status, moduleCount, capacity, issues }
+}
+
+function missingModulesMessage(
+  kitName: string,
+  boardName: string,
+  kitListed: boolean,
+  boardListed: boolean,
+): string {
+  if (!kitListed && !boardListed) {
+    return `${kitName} does not list a module count, and ${boardName} does not list DIMM slots.`
+  }
+
+  if (!kitListed) {
+    return `${kitName} does not list a module count.`
+  }
+
+  return `${boardName} does not list DIMM slots.`
+}
+
+function missingCapacityMessage(
+  kitName: string,
+  boardName: string,
+  kitListed: boolean,
+  boardListed: boolean,
+): string {
+  if (!kitListed && !boardListed) {
+    return `${kitName} does not list a capacity, and ${boardName} does not list a maximum memory size.`
+  }
+
+  if (!kitListed) {
+    return `${kitName} does not list a capacity.`
+  }
+
+  return `${boardName} does not list a maximum memory size.`
 }
 
 export type Gpu = {

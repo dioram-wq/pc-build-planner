@@ -94,7 +94,7 @@ describe('App', () => {
     ).toHaveProperty('disabled', false)
     expect(
       screen.getByRole('option', {
-        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · ATX · 3 M.2 · 4 SATA · $179 — incompatible: case supports Mini-ITX',
+        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · ATX · 4 DIMM slots · 192GB · 3 M.2 · 4 SATA · $179 — incompatible: case supports Mini-ITX',
       }),
     ).toBeTruthy()
     expect(
@@ -115,7 +115,7 @@ describe('App', () => {
     ).toBeTruthy()
     expect(
       screen.getByRole('option', {
-        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · ATX · 3 M.2 · 4 SATA · $179',
+        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · ATX · 4 DIMM slots · 192GB · 3 M.2 · 4 SATA · $179',
       }).className,
     ).not.toContain('incompatible')
   })
@@ -699,10 +699,10 @@ describe('App', () => {
       name: 'AMD Ryzen 7 5800X · AM4 · $189 — incompatible: socket AM5',
     })
     const ddr4 = screen.getByRole('option', {
-      name: 'Corsair Vengeance LPX 32GB DDR4-3600 · DDR4 · $69 — incompatible: memory DDR5',
+      name: 'Corsair Vengeance LPX 32GB DDR4-3600 · DDR4 · 2 modules · 32GB · $69 — incompatible: memory DDR5',
     })
     const b550 = screen.getByRole('option', {
-      name: 'MSI MAG B550 Tomahawk · AM4 · DDR4 · ATX · 2 M.2 · 6 SATA · $149 — incompatible: socket AM5, memory DDR5',
+      name: 'MSI MAG B550 Tomahawk · AM4 · DDR4 · ATX · 4 DIMM slots · 128GB · 2 M.2 · 6 SATA · $149 — incompatible: socket AM5, memory DDR5',
     })
 
     expect(compatibleCpu.className).not.toContain('incompatible')
@@ -733,7 +733,7 @@ describe('App', () => {
     ).toBeTruthy()
     expect(
       screen.getByRole('option', {
-        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · ATX · 3 M.2 · 4 SATA · $179 — incompatible: socket AM4',
+        name: 'ASUS TUF Gaming B650-PLUS · AM5 · DDR5 · ATX · 4 DIMM slots · 192GB · 3 M.2 · 4 SATA · $179 — incompatible: socket AM4',
       }),
     ).toBeTruthy()
   })

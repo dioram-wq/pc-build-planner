@@ -1,11 +1,14 @@
 import {
   checkCaseClearance,
   checkCpuSocket,
+  checkMemoryCapacity,
   checkMemoryType,
   checkMotherboardFormFactor,
   checkPowerSupply,
   checkStorageInterface,
+  formatDimmSlots,
   formatFormFactorList,
+  formatModuleCount,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -155,6 +158,10 @@ function motherboardConflicts(
     conflicts.push(`memory ${build.memory.memoryType}`)
   }
 
+  if (build.memory) {
+    conflicts.push(...boardCapacityConflicts(candidate, build.memory))
+  }
+
   if (build.storage) {
     const storage = storageSlotConflict(build.storage, candidate)
     if (storage) conflicts.push(storage)
@@ -174,10 +181,13 @@ function memoryConflicts(
 ): PartOptionCheck {
   if (!build.motherboard) return optionResult([])
 
-  const memory = checkMemoryType(candidate, build.motherboard)
-  if (memory.compatible) return optionResult([])
+  const conflicts: string[] = []
+  if (!checkMemoryType(candidate, build.motherboard).compatible) {
+    conflicts.push(`memory ${build.motherboard.memoryType}`)
+  }
+  conflicts.push(...kitCapacityConflicts(candidate, build.motherboard))
 
-  return optionResult([`memory ${build.motherboard.memoryType}`])
+  return optionResult(conflicts)
 }
 
 function gpuConflicts(candidate: Gpu, build: SelectedBuild): PartOptionCheck {
@@ -238,6 +248,36 @@ function storageConflicts(
 
   const storage = storageSlotConflict(candidate, build.motherboard)
   return optionResult(storage ? [storage] : [])
+}
+
+function kitCapacityConflicts(kit: Memory, board: Motherboard): string[] {
+  const result = checkMemoryCapacity(kit, board)
+  const conflicts: string[] = []
+
+  if (result.moduleCount === 'too-many' && typeof board.dimmSlots === 'number') {
+    conflicts.push(formatDimmSlots(board.dimmSlots))
+  }
+
+  if (result.capacity === 'over' && typeof board.maxMemoryGb === 'number') {
+    conflicts.push(`${board.maxMemoryGb}GB memory limit`)
+  }
+
+  return conflicts
+}
+
+function boardCapacityConflicts(board: Motherboard, kit: Memory): string[] {
+  const result = checkMemoryCapacity(kit, board)
+  const conflicts: string[] = []
+
+  if (result.moduleCount === 'too-many' && typeof kit.modules === 'number') {
+    conflicts.push(formatModuleCount(kit.modules))
+  }
+
+  if (result.capacity === 'over' && typeof kit.capacityGb === 'number') {
+    conflicts.push(`${kit.capacityGb}GB memory`)
+  }
+
+  return conflicts
 }
 
 function motherboardFormFactorConflict(
