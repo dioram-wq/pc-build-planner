@@ -262,6 +262,35 @@ describe('checkPartOption', () => {
       expect(checkPartOption('psu', rm650(), matching())).toEqual(compatible)
     })
 
+    it('accepts a card when the supply matches its 8-pin count', () => {
+      const gpu = card(263, 'AMD Radeon RX 7800 XT', 267, [
+        { eightPin: 2, twelveVhpwr: 0 },
+      ])
+      const psu = supply(550, 'Corsair CX550', { eightPin: 2, twelveVhpwr: 0 })
+      const build = selected({ gpu, psu, case: north() })
+
+      expect(checkPartOption('gpu', gpu, build)).toEqual(compatible)
+      expect(checkPartOption('psu', psu, build)).toEqual(compatible)
+    })
+
+    it('accepts a 12VHPWR supply for a card that lists that alternative', () => {
+      const gpu = card(450, 'NVIDIA GeForce RTX 4090', 304, [
+        { eightPin: 3, twelveVhpwr: 0 },
+        { eightPin: 0, twelveVhpwr: 1 },
+      ])
+      const psu = supply(1000, 'be quiet! Straight Power 12', {
+        eightPin: 0,
+        twelveVhpwr: 1,
+      })
+
+      expect(checkPartOption('gpu', gpu, selected({ gpu, psu }))).toEqual(
+        compatible,
+      )
+      expect(checkPartOption('psu', psu, selected({ gpu, psu }))).toEqual(
+        compatible,
+      )
+    })
+
     it('leaves a tight supply unmarked when it still covers the draw', () => {
       const build = selected({
         cpu: ryzen(),
@@ -595,6 +624,62 @@ describe('checkPartOption', () => {
       ).toEqual({ compatible: false, conflicts: ['no SATA ports'] })
     })
 
+    it('marks a card the supply cannot plug in, and the supply for that card', () => {
+      const gpu = card(263, 'AMD Radeon RX 7800 XT', 267, [
+        { eightPin: 2, twelveVhpwr: 0 },
+      ])
+      const psu = supply(650, 'Small supply', { eightPin: 1, twelveVhpwr: 0 })
+      const build = selected({
+        cpu: cpu('AM5', 'AMD Ryzen 5 7600', 65),
+        gpu,
+        psu,
+      })
+
+      expect(checkPartOption('gpu', gpu, build)).toEqual({
+        compatible: false,
+        conflicts: ['supply has 1x 8-pin'],
+      })
+      expect(checkPartOption('psu', psu, build)).toEqual({
+        compatible: false,
+        conflicts: ['GPU needs 2x 8-pin'],
+      })
+    })
+
+    it('lists power connectors after the graphics card length limit', () => {
+      const gpu = card(450, 'NVIDIA GeForce RTX 4090', 304, [
+        { eightPin: 3, twelveVhpwr: 0 },
+        { eightPin: 0, twelveVhpwr: 1 },
+      ])
+      const pcCase = chassis(270, 170, 'SilverStone SUGO SG13')
+      const psu = supply(550, 'Corsair CX550', { eightPin: 2, twelveVhpwr: 0 })
+
+      expect(
+        checkPartOption('gpu', gpu, selected({ case: pcCase, psu })),
+      ).toEqual({
+        compatible: false,
+        conflicts: ['270mm GPU limit', 'supply has 2x 8-pin'],
+      })
+    })
+
+    it('lists power connectors after a wattage shortfall', () => {
+      const gpu = card(450, 'NVIDIA GeForce RTX 4090', 304, [
+        { eightPin: 3, twelveVhpwr: 0 },
+        { eightPin: 0, twelveVhpwr: 1 },
+      ])
+      const psu = supply(550, 'Corsair CX550', { eightPin: 2, twelveVhpwr: 0 })
+
+      expect(
+        checkPartOption(
+          'psu',
+          psu,
+          selected({ cpu: cpu('AM5', 'AMD Ryzen 5 7600', 65), gpu }),
+        ),
+      ).toEqual({
+        compatible: false,
+        conflicts: ['below 615W', 'GPU needs 3x 8-pin or 1x 12VHPWR'],
+      })
+    })
+
     it('marks a supply below the estimated draw and names that draw', () => {
       const build = selected({
         cpu: cpu('AM5', 'AMD Ryzen 5 7600', 65),
@@ -821,6 +906,49 @@ describe('checkPartOption', () => {
           selected({ gpu: card(450, 'Hungry', 300) }),
         ),
       ).toEqual(compatible)
+    })
+
+    it('skips power connectors until a card or a supply is selected', () => {
+      const gpu = card(450, 'NVIDIA GeForce RTX 4090', 304, [
+        { eightPin: 3, twelveVhpwr: 0 },
+        { eightPin: 0, twelveVhpwr: 1 },
+      ])
+      const psu = supply(550, 'Corsair CX550', { eightPin: 2, twelveVhpwr: 0 })
+
+      expect(checkPartOption('gpu', gpu, selected())).toEqual(compatible)
+      expect(
+        checkPartOption(
+          'psu',
+          psu,
+          selected({ cpu: cpu('AM5', 'AMD Ryzen 5 7600', 65) }),
+        ),
+      ).toEqual(compatible)
+    })
+
+    it('leaves the options unmarked when the connector data is missing', () => {
+      const gpu = card(263, 'AMD Radeon RX 7800 XT', 267, [
+        { eightPin: 2, twelveVhpwr: 0 },
+      ])
+      const psu = supply(550, 'Corsair CX550', { eightPin: 1, twelveVhpwr: 0 })
+      const bareGpu = { ...gpu, powerConnectors: undefined } as unknown as Gpu
+      const barePsu = { ...psu, powerConnectors: undefined } as unknown as Psu
+      const emptyGpu = { ...gpu, powerConnectors: [] } as unknown as Gpu
+
+      expect(checkPartOption('gpu', gpu, selected({ psu: barePsu }))).toEqual(
+        compatible,
+      )
+      expect(checkPartOption('psu', barePsu, selected({ gpu }))).toEqual(
+        compatible,
+      )
+      expect(checkPartOption('gpu', bareGpu, selected({ psu }))).toEqual(
+        compatible,
+      )
+      expect(checkPartOption('psu', psu, selected({ gpu: bareGpu }))).toEqual(
+        compatible,
+      )
+      expect(checkPartOption('gpu', emptyGpu, selected({ psu }))).toEqual(
+        compatible,
+      )
     })
 
     it('skips form factor until a case or a motherboard is selected', () => {

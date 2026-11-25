@@ -3,6 +3,7 @@ import {
   checkCaseClearance,
   checkCoolerSocket,
   checkCpuSocket,
+  checkGpuPowerConnectors,
   checkMemoryCapacity,
   checkMemoryType,
   checkMotherboardFormFactor,
@@ -920,6 +921,363 @@ describe('checkPowerSupply', () => {
   })
 })
 
+describe('checkGpuPowerConnectors', () => {
+  const eightPin = (count: number, name = 'Sample GPU') =>
+    card(200, name, 240, [{ eightPin: count, twelveVhpwr: 0 }])
+  const twelve = (name = '12VHPWR card') =>
+    card(200, name, 244, [{ eightPin: 0, twelveVhpwr: 1 }])
+  const either = (name = 'NVIDIA GeForce RTX 4090') =>
+    card(450, name, 304, [
+      { eightPin: 3, twelveVhpwr: 0 },
+      { eightPin: 0, twelveVhpwr: 1 },
+    ])
+  const plugs = (
+    eightPinCount: number,
+    twelveVhpwr: number,
+    name = 'Sample PSU',
+  ) => supply(650, name, { eightPin: eightPinCount, twelveVhpwr })
+
+  it('accepts a card when the supply has more 8-pin connectors', () => {
+    expect(checkGpuPowerConnectors(eightPin(1), plugs(2, 0))).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts a card when the 8-pin count matches exactly', () => {
+    expect(
+      checkGpuPowerConnectors(
+        eightPin(2, 'AMD Radeon RX 7800 XT'),
+        plugs(2, 0, 'Corsair CX550'),
+      ),
+    ).toEqual({ status: 'ok', issues: [] })
+  })
+
+  it('accepts a 12VHPWR card when the supply provides that connector', () => {
+    expect(
+      checkGpuPowerConnectors(twelve(), plugs(0, 1, '12VHPWR supply')),
+    ).toEqual({ status: 'ok', issues: [] })
+  })
+
+  it('accepts extra connectors the card does not ask for', () => {
+    expect(checkGpuPowerConnectors(eightPin(1), plugs(4, 1))).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts either 8-pin connectors or one 12VHPWR connector', () => {
+    expect(checkGpuPowerConnectors(either(), plugs(3, 0))).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+    expect(checkGpuPowerConnectors(either(), plugs(4, 0))).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+    expect(
+      checkGpuPowerConnectors(either(), plugs(0, 1, '12VHPWR only')),
+    ).toEqual({ status: 'ok', issues: [] })
+  })
+
+  it('accepts a set that requires both connector types', () => {
+    const dual = card(300, 'Dual plug', 280, [
+      { eightPin: 2, twelveVhpwr: 1 },
+    ])
+
+    expect(checkGpuPowerConnectors(dual, plugs(2, 1, 'Both'))).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+    expect(checkGpuPowerConnectors(dual, plugs(4, 2, 'Extra'))).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts a card that needs no graphics power connectors', () => {
+    const slot = card(75, 'Slot powered', 170, [
+      { eightPin: 0, twelveVhpwr: 0 },
+    ])
+
+    expect(checkGpuPowerConnectors(slot, plugs(0, 0, 'Bare'))).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+    expect(checkGpuPowerConnectors(slot, plugs(2, 0))).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('rejects a supply that is one 8-pin short and names both counts', () => {
+    expect(
+      checkGpuPowerConnectors(
+        eightPin(2, 'AMD Radeon RX 7800 XT'),
+        plugs(1, 0, 'Small supply'),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'gpu-connectors-insufficient',
+          message:
+            'AMD Radeon RX 7800 XT (2x 8-pin) does not fit Small supply (1x 8-pin).',
+        },
+      ],
+    })
+  })
+
+  it('rejects a 12VHPWR card when the supply provides none', () => {
+    expect(
+      checkGpuPowerConnectors(
+        twelve('NVIDIA GeForce RTX 4070'),
+        plugs(2, 0, 'Corsair CX550'),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'gpu-connectors-insufficient',
+          message:
+            'NVIDIA GeForce RTX 4070 (1x 12VHPWR) does not fit Corsair CX550 (2x 8-pin).',
+        },
+      ],
+    })
+  })
+
+  it('rejects a card when every accepted set is short', () => {
+    expect(
+      checkGpuPowerConnectors(either(), plugs(2, 0, 'Corsair CX550')),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'gpu-connectors-insufficient',
+          message:
+            'NVIDIA GeForce RTX 4090 (3x 8-pin or 1x 12VHPWR) does not fit Corsair CX550 (2x 8-pin).',
+        },
+      ],
+    })
+  })
+
+  it('does not treat 12VHPWR as a substitute for an 8-pin card', () => {
+    expect(
+      checkGpuPowerConnectors(
+        eightPin(1, 'NVIDIA GeForce RTX 4060'),
+        plugs(0, 1, 'Gen5 only'),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'gpu-connectors-insufficient',
+          message:
+            'NVIDIA GeForce RTX 4060 (1x 8-pin) does not fit Gen5 only (1x 12VHPWR).',
+        },
+      ],
+    })
+  })
+
+  it('rejects a supply that misses one type in a set that needs both', () => {
+    const dual = card(300, 'Dual plug', 280, [
+      { eightPin: 2, twelveVhpwr: 1 },
+    ])
+
+    expect(
+      checkGpuPowerConnectors(dual, plugs(2, 0, 'Short one')),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'gpu-connectors-insufficient',
+          message:
+            'Dual plug (2x 8-pin and 1x 12VHPWR) does not fit Short one (2x 8-pin).',
+        },
+      ],
+    })
+  })
+
+  it('asks for a graphics card when none is selected', () => {
+    expect(checkGpuPowerConnectors(null, plugs(2, 0))).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'gpu-connectors-missing',
+          message: 'Select a graphics card to check its power connectors.',
+        },
+      ],
+    })
+  })
+
+  it('asks for a power supply when none is selected', () => {
+    expect(checkGpuPowerConnectors(eightPin(1), null)).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'gpu-connectors-missing',
+          message:
+            'Select a power supply to check the graphics card power connectors.',
+        },
+      ],
+    })
+  })
+
+  it('asks for a graphics card when neither part is selected', () => {
+    expect(checkGpuPowerConnectors(null, null)).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'gpu-connectors-missing',
+          message: 'Select a graphics card to check its power connectors.',
+        },
+      ],
+    })
+  })
+
+  it('reports a card that does not list power connectors', () => {
+    expect(
+      checkGpuPowerConnectors(
+        { name: 'Unlisted GPU' },
+        { name: 'Sample PSU', powerConnectors: { eightPin: 2, twelveVhpwr: 0 } },
+      ),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'gpu-connectors-missing',
+          message: 'Unlisted GPU does not list power connectors.',
+        },
+      ],
+    })
+
+    expect(
+      checkGpuPowerConnectors(
+        { name: 'Unlisted GPU', powerConnectors: null },
+        plugs(2, 0),
+      ).status,
+    ).toBe('missing')
+    expect(
+      checkGpuPowerConnectors(
+        { name: 'Unlisted GPU', powerConnectors: [] },
+        plugs(2, 0),
+      ).issues[0]?.message,
+    ).toBe('Unlisted GPU does not list power connectors.')
+  })
+
+  it('reports a supply that does not list the connectors it provides', () => {
+    expect(
+      checkGpuPowerConnectors(eightPin(1, 'NVIDIA GeForce RTX 4060'), {
+        name: 'Mystery PSU',
+      }),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'gpu-connectors-missing',
+          message: 'Mystery PSU does not list the power connectors it provides.',
+        },
+      ],
+    })
+
+    expect(
+      checkGpuPowerConnectors(eightPin(1), {
+        name: 'Mystery PSU',
+        powerConnectors: null,
+      }).status,
+    ).toBe('missing')
+  })
+
+  it('reports both parts when neither lists power connectors', () => {
+    expect(
+      checkGpuPowerConnectors(
+        { name: 'Unlisted GPU' },
+        { name: 'Mystery PSU' },
+      ),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'gpu-connectors-missing',
+          message:
+            'Unlisted GPU does not list power connectors, and Mystery PSU does not list the power connectors it provides.',
+        },
+      ],
+    })
+  })
+
+  it('treats an unusable connector count as missing data', () => {
+    const supplyListed = {
+      name: 'Sample PSU',
+      powerConnectors: { eightPin: 2, twelveVhpwr: 0 },
+    }
+
+    expect(
+      checkGpuPowerConnectors(
+        {
+          name: 'Bad count',
+          powerConnectors: [{ eightPin: -1, twelveVhpwr: 0 }],
+        },
+        supplyListed,
+      ).status,
+    ).toBe('missing')
+    expect(
+      checkGpuPowerConnectors(
+        {
+          name: 'Fractional',
+          powerConnectors: [{ eightPin: 1.5, twelveVhpwr: 0 }],
+        },
+        supplyListed,
+      ).status,
+    ).toBe('missing')
+    expect(
+      checkGpuPowerConnectors(
+        {
+          name: 'Half listed',
+          powerConnectors: [{ eightPin: 1 }],
+        },
+        supplyListed,
+      ).issues[0]?.message,
+    ).toBe('Half listed does not list power connectors.')
+    expect(
+      checkGpuPowerConnectors(eightPin(1), {
+        name: 'Half supply',
+        powerConnectors: { eightPin: 2 },
+      }).issues[0]?.message,
+    ).toBe('Half supply does not list the power connectors it provides.')
+  })
+
+  it('ignores an incomplete alternative and still uses a complete one', () => {
+    const cardWithGap = {
+      name: 'Mixed card',
+      powerConnectors: [
+        { eightPin: 4, twelveVhpwr: null },
+        { eightPin: 1, twelveVhpwr: 0 },
+      ],
+    }
+
+    expect(checkGpuPowerConnectors(cardWithGap, plugs(1, 0))).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+
+    const missed = checkGpuPowerConnectors(
+      {
+        name: 'Mixed card',
+        powerConnectors: [
+          { eightPin: 4 },
+          { eightPin: 2, twelveVhpwr: 0 },
+        ],
+      },
+      plugs(1, 0, 'Small supply'),
+    )
+    expect(missed.status).toBe('unsupported')
+    expect(missed.issues[0]?.message).toBe(
+      'Mixed card (2x 8-pin) does not fit Small supply (1x 8-pin).',
+    )
+  })
+})
+
 describe('checkCaseClearance', () => {
   const north = () => chassis(355, 170, 'Fractal Design North')
 
@@ -1633,5 +1991,64 @@ describe('sample catalog', () => {
         ),
       ).toBe(true)
     }
+  })
+
+  it('records power connectors on every graphics card and supply', () => {
+    expect(gpus.length).toBeGreaterThan(0)
+    for (const part of gpus) {
+      expect(part.powerConnectors.length).toBeGreaterThan(0)
+      for (const set of part.powerConnectors) {
+        expect(Number.isInteger(set.eightPin)).toBe(true)
+        expect(set.eightPin).toBeGreaterThanOrEqual(0)
+        expect(Number.isInteger(set.twelveVhpwr)).toBe(true)
+        expect(set.twelveVhpwr).toBeGreaterThanOrEqual(0)
+      }
+    }
+
+    expect(psus.length).toBeGreaterThan(0)
+    for (const part of psus) {
+      expect(Number.isInteger(part.powerConnectors.eightPin)).toBe(true)
+      expect(part.powerConnectors.eightPin).toBeGreaterThanOrEqual(0)
+      expect(Number.isInteger(part.powerConnectors.twelveVhpwr)).toBe(true)
+      expect(part.powerConnectors.twelveVhpwr).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it('includes a supply that fits each sample card and one the RTX 4090 does not', () => {
+    for (const part of gpus) {
+      expect(
+        psus.some((item) => checkGpuPowerConnectors(part, item).status === 'ok'),
+      ).toBe(true)
+    }
+
+    const card4060 = gpus.find((part) => part.id === 'gpu-4060')
+    const card4070 = gpus.find((part) => part.id === 'gpu-4070')
+    const xt = gpus.find((part) => part.id === 'gpu-7800xt')
+    const card4090 = gpus.find((part) => part.id === 'gpu-4090')
+    const cx550 = psus.find((part) => part.id === 'psu-550')
+    const rm650 = psus.find((part) => part.id === 'psu-650')
+    const straight = psus.find((part) => part.id === 'psu-1000')
+    if (!card4060 || !card4070 || !xt || !card4090 || !cx550 || !rm650 || !straight) {
+      throw new Error('expected the sample graphics cards and supplies')
+    }
+
+    expect(checkGpuPowerConnectors(card4060, cx550)).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+    expect(checkGpuPowerConnectors(xt, cx550)).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+    expect(checkGpuPowerConnectors(card4070, cx550).status).toBe('ok')
+    expect(checkGpuPowerConnectors(card4070, straight).status).toBe('ok')
+    expect(checkGpuPowerConnectors(card4090, rm650).status).toBe('ok')
+    expect(checkGpuPowerConnectors(card4090, straight).status).toBe('ok')
+
+    const mismatch = checkGpuPowerConnectors(card4090, cx550)
+    expect(mismatch.status).toBe('unsupported')
+    expect(mismatch.issues.map((issue) => issue.code)).toEqual([
+      'gpu-connectors-insufficient',
+    ])
   })
 })

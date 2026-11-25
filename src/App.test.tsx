@@ -402,6 +402,112 @@ describe('App', () => {
     expect(screen.getByText('Compatible. Both parts use DDR5.')).toBeTruthy()
   })
 
+  it('accepts a graphics card whose 8-pin connector the supply provides', () => {
+    render(<App />)
+
+    expect(
+      screen.getByText(
+        'Compatible. NVIDIA GeForce RTX 4060 (1x 8-pin) fits Corsair CX550 (2x 8-pin).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'NVIDIA GeForce RTX 4060 · 115W · 1x 8-pin · 240mm · $299',
+      }).className,
+    ).not.toContain('incompatible')
+    expect(
+      screen.getByRole('option', {
+        name: 'Corsair CX550 · 550W · 2x 8-pin · $65',
+      }).className,
+    ).not.toContain('incompatible')
+  })
+
+  it('flags a graphics card the power supply cannot plug in', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Graphics card'), {
+      target: { value: 'gpu-4090' },
+    })
+
+    expect(screen.getByText('Not enough power connectors.')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'NVIDIA GeForce RTX 4090 (3x 8-pin or 1x 12VHPWR) does not fit Corsair CX550 (2x 8-pin).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', {
+        name: 'Build status: 2 compatibility issues',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'NVIDIA GeForce RTX 4090 · 450W · 3x 8-pin or 1x 12VHPWR · 304mm · $1,599 — incompatible: supply has 2x 8-pin',
+      }),
+    ).toHaveProperty('disabled', false)
+    expect(
+      screen.getByRole('option', {
+        name: 'Corsair CX550 · 550W · 2x 8-pin · $65 — incompatible: below 615W, GPU needs 3x 8-pin or 1x 12VHPWR',
+      }),
+    ).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Power supply'), {
+      target: { value: 'psu-650' },
+    })
+
+    expect(
+      screen.getByText(
+        'Compatible. NVIDIA GeForce RTX 4090 (3x 8-pin or 1x 12VHPWR) fits Corsair RM650x (4x 8-pin).',
+      ),
+    ).toBeTruthy()
+    expect(screen.getByText('Tight.')).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'NVIDIA GeForce RTX 4090 · 450W · 3x 8-pin or 1x 12VHPWR · 304mm · $1,599',
+      }).className,
+    ).not.toContain('incompatible')
+
+    fireEvent.change(screen.getByLabelText('Graphics card'), {
+      target: { value: '' },
+    })
+
+    expect(screen.getByText('No graphics card selected.')).toBeTruthy()
+    expect(
+      screen.getByText('Select a graphics card to check its power connectors.'),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
+  })
+
+  it('asks for a supply before checking graphics card power connectors', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Power supply'), {
+      target: { value: '' },
+    })
+
+    expect(
+      screen.getByText('No power supply for the graphics card.'),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(
+        'Select a power supply to check the graphics card power connectors.',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'NVIDIA GeForce RTX 4060 · 115W · 1x 8-pin · 240mm · $299',
+      }).className,
+    ).not.toContain('incompatible')
+  })
+
   it('asks for a power supply when none is selected', () => {
     render(<App />)
 

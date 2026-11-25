@@ -483,6 +483,60 @@ describe('buildStatusSummary', () => {
     ).toEqual({ level: 'ok', text: 'All checks pass' })
   })
 
+  it('counts a graphics card the supply cannot power', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4)
+    const checks = passing()
+    checks.gpuConnectors = checkGpuPowerConnectors(
+      card(263, 'AMD Radeon RX 7800 XT', 267, [
+        { eightPin: 2, twelveVhpwr: 0 },
+      ]),
+      supply(650, 'Small supply', { eightPin: 1, twelveVhpwr: 0 }),
+    )
+
+    expect(checks.gpuConnectors.status).toBe('unsupported')
+    expect(checks.power.status).not.toBe('insufficient')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'issue', text: '1 compatibility issue' })
+  })
+
+  it('ignores a missing card, a missing supply, and unlisted power connectors', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4)
+    const checks = passing()
+
+    expect(checks.gpuConnectors.status).toBe('ok')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.gpuConnectors = checkGpuPowerConnectors(
+      null,
+      supply(550, 'Corsair CX550'),
+    )
+    expect(checks.gpuConnectors.status).toBe('missing')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.gpuConnectors = checkGpuPowerConnectors(
+      card(115, 'NVIDIA GeForce RTX 4060', 240),
+      null,
+    )
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.gpuConnectors = checkGpuPowerConnectors(
+      { name: 'Unlisted GPU' },
+      { name: 'Mystery PSU' },
+    )
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+  })
+
   it('ignores a missing case and parts that do not list a form factor', () => {
     const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
     const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4, 'ATX')
