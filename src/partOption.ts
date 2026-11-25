@@ -2,6 +2,7 @@ import {
   checkCaseClearance,
   checkCoolerSocket,
   checkCpuSocket,
+  checkGpuPowerConnectors,
   checkMemoryCapacity,
   checkMemoryType,
   checkMotherboardFormFactor,
@@ -10,7 +11,9 @@ import {
   formatDimmSlots,
   formatFormFactorList,
   formatModuleCount,
+  formatRequiredPowerConnectors,
   formatSocketList,
+  formatSuppliedPowerConnectors,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -202,12 +205,21 @@ function memoryConflicts(
 }
 
 function gpuConflicts(candidate: Gpu, build: SelectedBuild): PartOptionCheck {
-  if (!build.case) return optionResult([])
+  const conflicts: string[] = []
 
-  const clearance = checkCaseClearance(build.case, candidate, null)
-  if (clearance.gpuLength !== 'too-long') return optionResult([])
+  if (build.case) {
+    const clearance = checkCaseClearance(build.case, candidate, null)
+    if (clearance.gpuLength === 'too-long') {
+      conflicts.push(`${build.case.maxGpuLengthMm}mm GPU limit`)
+    }
+  }
 
-  return optionResult([`${build.case.maxGpuLengthMm}mm GPU limit`])
+  if (build.psu) {
+    const connectors = gpuConnectorConflict(candidate, build.psu)
+    if (connectors) conflicts.push(connectors)
+  }
+
+  return optionResult(conflicts)
 }
 
 function coolerConflicts(
@@ -252,12 +264,21 @@ function caseConflicts(candidate: Case, build: SelectedBuild): PartOptionCheck {
 }
 
 function psuConflicts(candidate: Psu, build: SelectedBuild): PartOptionCheck {
-  if (!build.cpu) return optionResult([])
+  const conflicts: string[] = []
 
-  const power = checkPowerSupply(build.cpu, build.gpu, candidate)
-  if (power.status !== 'insufficient') return optionResult([])
+  if (build.cpu) {
+    const power = checkPowerSupply(build.cpu, build.gpu, candidate)
+    if (power.status === 'insufficient') {
+      conflicts.push(`below ${power.estimatedDrawWatts}W`)
+    }
+  }
 
-  return optionResult([`below ${power.estimatedDrawWatts}W`])
+  if (build.gpu) {
+    const connectors = psuConnectorConflict(build.gpu, candidate)
+    if (connectors) conflicts.push(connectors)
+  }
+
+  return optionResult(conflicts)
 }
 
 function storageConflicts(
@@ -332,6 +353,18 @@ function cpuCoolerSocketConflict(cpu: Cpu, cooler: CpuCooler): string | null {
   if (result.status !== 'unsupported') return null
 
   return `cooler supports ${formatSocketList(cooler.sockets)}`
+}
+
+function gpuConnectorConflict(gpu: Gpu, psu: Psu): string | null {
+  const result = checkGpuPowerConnectors(gpu, psu)
+  if (result.status !== 'unsupported') return null
+  return `supply has ${formatSuppliedPowerConnectors(psu.powerConnectors)}`
+}
+
+function psuConnectorConflict(gpu: Gpu, psu: Psu): string | null {
+  const result = checkGpuPowerConnectors(gpu, psu)
+  if (result.status !== 'unsupported') return null
+  return `GPU needs ${formatRequiredPowerConnectors(gpu.powerConnectors)}`
 }
 
 function storageSlotConflict(

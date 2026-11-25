@@ -153,24 +153,34 @@ const gpuCatalog = [
     name: 'NVIDIA GeForce RTX 4060',
     boardPowerWatts: 115,
     lengthMm: 240,
+    powerConnectors: [{ eightPin: 1, twelveVhpwr: 0 }],
   },
   {
     id: 'gpu-4070',
     name: 'NVIDIA GeForce RTX 4070',
     boardPowerWatts: 200,
     lengthMm: 244,
+    powerConnectors: [
+      { eightPin: 2, twelveVhpwr: 0 },
+      { eightPin: 0, twelveVhpwr: 1 },
+    ],
   },
   {
     id: 'gpu-7800xt',
     name: 'AMD Radeon RX 7800 XT',
     boardPowerWatts: 263,
     lengthMm: 267,
+    powerConnectors: [{ eightPin: 2, twelveVhpwr: 0 }],
   },
   {
     id: 'gpu-4090',
     name: 'NVIDIA GeForce RTX 4090',
     boardPowerWatts: 450,
     lengthMm: 304,
+    powerConnectors: [
+      { eightPin: 3, twelveVhpwr: 0 },
+      { eightPin: 0, twelveVhpwr: 1 },
+    ],
   },
 ] as const satisfies readonly Gpu[]
 
@@ -239,11 +249,36 @@ const caseCatalog = [
 export const cases = applyPrices(caseCatalog, samplePricesUsd)
 
 const psuCatalog = [
-  { id: 'psu-550', name: 'Corsair CX550', wattage: 550 },
-  { id: 'psu-650', name: 'Corsair RM650x', wattage: 650 },
-  { id: 'psu-750', name: 'Seasonic Focus GX-750', wattage: 750 },
-  { id: 'psu-850', name: 'Corsair RM850x', wattage: 850 },
-  { id: 'psu-1000', name: 'be quiet! Straight Power 12', wattage: 1000 },
+  {
+    id: 'psu-550',
+    name: 'Corsair CX550',
+    wattage: 550,
+    powerConnectors: { eightPin: 2, twelveVhpwr: 0 },
+  },
+  {
+    id: 'psu-650',
+    name: 'Corsair RM650x',
+    wattage: 650,
+    powerConnectors: { eightPin: 4, twelveVhpwr: 0 },
+  },
+  {
+    id: 'psu-750',
+    name: 'Seasonic Focus GX-750',
+    wattage: 750,
+    powerConnectors: { eightPin: 4, twelveVhpwr: 0 },
+  },
+  {
+    id: 'psu-850',
+    name: 'Corsair RM850x',
+    wattage: 850,
+    powerConnectors: { eightPin: 3, twelveVhpwr: 1 },
+  },
+  {
+    id: 'psu-1000',
+    name: 'be quiet! Straight Power 12',
+    wattage: 1000,
+    powerConnectors: { eightPin: 4, twelveVhpwr: 1 },
+  },
 ] as const satisfies readonly Psu[]
 
 export const psus = applyPrices(psuCatalog, samplePricesUsd)

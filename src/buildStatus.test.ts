@@ -4,6 +4,7 @@ import {
   checkCaseClearance,
   checkCoolerSocket,
   checkCpuSocket,
+  checkGpuPowerConnectors,
   checkMemoryCapacity,
   checkMemoryType,
   checkMotherboardFormFactor,
@@ -63,8 +64,15 @@ function card(
   boardPowerWatts: number,
   name = 'Sample GPU',
   lengthMm = 240,
+  powerConnectors: Gpu['powerConnectors'] = [{ eightPin: 1, twelveVhpwr: 0 }],
 ): Gpu {
-  return { id: `gpu-${boardPowerWatts}`, name, boardPowerWatts, lengthMm }
+  return {
+    id: `gpu-${boardPowerWatts}`,
+    name,
+    boardPowerWatts,
+    lengthMm,
+    powerConnectors,
+  }
 }
 
 function tower(
@@ -94,8 +102,12 @@ function chassis(
   }
 }
 
-function supply(wattage: number, name = 'Sample PSU'): Psu {
-  return { id: `psu-${wattage}`, name, wattage }
+function supply(
+  wattage: number,
+  name = 'Sample PSU',
+  powerConnectors: Psu['powerConnectors'] = { eightPin: 4, twelveVhpwr: 1 },
+): Psu {
+  return { id: `psu-${wattage}`, name, wattage, powerConnectors }
 }
 
 function drive(
@@ -124,6 +136,7 @@ function checksFor(parts: {
     storage: checkStorageInterface(parts.storage, parts.motherboard),
     formFactor: checkMotherboardFormFactor(parts.motherboard, parts.pcCase),
     coolerSocket: checkCoolerSocket(parts.cooler, parts.cpu),
+    gpuConnectors: checkGpuPowerConnectors(parts.gpu, parts.psu),
   }
 }
 
@@ -153,6 +166,7 @@ describe('buildStatusSummary', () => {
           storage: null,
           formFactor: null,
           coolerSocket: null,
+          gpuConnectors: null,
         },
       ),
     ).toEqual({
@@ -172,6 +186,7 @@ describe('buildStatusSummary', () => {
       storage: null,
       formFactor: null,
       coolerSocket: null,
+      gpuConnectors: null,
     }
 
     expect(
@@ -207,6 +222,7 @@ describe('buildStatusSummary', () => {
         storage: null,
         formFactor: null,
         coolerSocket: null,
+        gpuConnectors: null,
       },
     )
 

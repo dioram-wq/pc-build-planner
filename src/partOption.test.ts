@@ -56,8 +56,19 @@ function kit(
   return { id: `mem-${memoryType}`, name, memoryType, modules, capacityGb }
 }
 
-function card(boardPowerWatts: number, name = 'Sample GPU', lengthMm = 240): Gpu {
-  return { id: `gpu-${boardPowerWatts}`, name, boardPowerWatts, lengthMm }
+function card(
+  boardPowerWatts: number,
+  name = 'Sample GPU',
+  lengthMm = 240,
+  powerConnectors: Gpu['powerConnectors'] = [{ eightPin: 1, twelveVhpwr: 0 }],
+): Gpu {
+  return {
+    id: `gpu-${boardPowerWatts}`,
+    name,
+    boardPowerWatts,
+    lengthMm,
+    powerConnectors,
+  }
 }
 
 function tower(
@@ -87,8 +98,12 @@ function chassis(
   }
 }
 
-function supply(wattage: number, name = 'Sample PSU'): Psu {
-  return { id: `psu-${wattage}`, name, wattage }
+function supply(
+  wattage: number,
+  name = 'Sample PSU',
+  powerConnectors: Psu['powerConnectors'] = { eightPin: 4, twelveVhpwr: 1 },
+): Psu {
+  return { id: `psu-${wattage}`, name, wattage, powerConnectors }
 }
 
 function drive(
@@ -688,7 +703,10 @@ describe('checkPartOption', () => {
           cx550,
           selected({ cpu: ryzen, gpu: card4090 }),
         ),
-      ).toEqual({ compatible: false, conflicts: ['below 615W'] })
+      ).toEqual({
+        compatible: false,
+        conflicts: ['below 615W', 'GPU needs 3x 8-pin or 1x 12VHPWR'],
+      })
       expect(
         checkPartOption(
           'psu',

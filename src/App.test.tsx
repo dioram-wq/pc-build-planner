@@ -930,9 +930,13 @@ describe('App', () => {
   it('marks a card and cooler that miss the case, and clears those marks with no case', () => {
     render(<App />)
 
+    fireEvent.change(screen.getByLabelText('Power supply'), {
+      target: { value: 'psu-650' },
+    })
+
     expect(
       screen.getByRole('option', {
-        name: 'NVIDIA GeForce RTX 4090 · 450W · 304mm · $1,599',
+        name: 'NVIDIA GeForce RTX 4090 · 450W · 3x 8-pin or 1x 12VHPWR · 304mm · $1,599',
       }).className,
     ).not.toContain('incompatible')
 
@@ -942,12 +946,12 @@ describe('App', () => {
 
     expect(
       screen.getByRole('option', {
-        name: 'NVIDIA GeForce RTX 4060 · 115W · 240mm · $299',
+        name: 'NVIDIA GeForce RTX 4060 · 115W · 1x 8-pin · 240mm · $299',
       }).className,
     ).not.toContain('incompatible')
     expect(
       screen.getByRole('option', {
-        name: 'NVIDIA GeForce RTX 4090 · 450W · 304mm · $1,599 — incompatible: 270mm GPU limit',
+        name: 'NVIDIA GeForce RTX 4090 · 450W · 3x 8-pin or 1x 12VHPWR · 304mm · $1,599 — incompatible: 270mm GPU limit',
       }),
     ).toHaveProperty('disabled', false)
     expect(
@@ -993,7 +997,7 @@ describe('App', () => {
 
     expect(
       screen.getByRole('option', {
-        name: 'NVIDIA GeForce RTX 4090 · 450W · 304mm · $1,599',
+        name: 'NVIDIA GeForce RTX 4090 · 450W · 3x 8-pin or 1x 12VHPWR · 304mm · $1,599',
       }).className,
     ).not.toContain('incompatible')
     expect(
@@ -1011,10 +1015,10 @@ describe('App', () => {
     })
 
     const insufficient = screen.getByRole('option', {
-      name: 'Corsair CX550 · 550W · $65 — incompatible: below 615W',
+      name: 'Corsair CX550 · 550W · 2x 8-pin · $65 — incompatible: below 615W, GPU needs 3x 8-pin or 1x 12VHPWR',
     })
     const tight = screen.getByRole('option', {
-      name: 'Corsair RM650x · 650W · $110',
+      name: 'Corsair RM650x · 650W · 4x 8-pin · $110',
     })
 
     expect(insufficient.className).toContain('incompatible')

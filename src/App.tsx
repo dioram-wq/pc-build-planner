@@ -7,6 +7,7 @@ import {
   checkCaseClearance,
   checkCoolerSocket,
   checkCpuSocket,
+  checkGpuPowerConnectors,
   checkMemoryCapacity,
   checkMemoryType,
   checkMotherboardFormFactor,
@@ -15,7 +16,9 @@ import {
   formatDimmSlots,
   formatFormFactorList,
   formatModuleCount,
+  formatRequiredPowerConnectors,
   formatSocketList,
+  formatSuppliedPowerConnectors,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -323,6 +326,40 @@ function PowerSupplyStatus({
   )
 }
 
+function GpuConnectorStatus({ gpu, psu }: { gpu: Gpu | null; psu: Psu | null }) {
+  const result = checkGpuPowerConnectors(gpu, psu)
+
+  if (result.status === 'ok' && gpu && psu) {
+    return (
+      <p className="status ok" role="status">
+        {`Compatible. ${gpu.name} (${formatRequiredPowerConnectors(gpu.powerConnectors)}) fits ${psu.name} (${formatSuppliedPowerConnectors(psu.powerConnectors)}).`}
+      </p>
+    )
+  }
+
+  let heading = 'No graphics card selected.'
+  let tone = 'missing'
+  if (result.status === 'unsupported') {
+    heading = 'Not enough power connectors.'
+    tone = 'bad'
+  } else if (gpu && !psu) {
+    heading = 'No power supply for the graphics card.'
+  } else if (gpu && psu) {
+    heading = 'Power connectors unknown.'
+  }
+
+  return (
+    <div className={`status ${tone}`} role="status">
+      <p>{heading}</p>
+      <ul>
+        {result.issues.map((issue) => (
+          <li key={issue.code}>{issue.message}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function FormFactorStatus({
   motherboard,
   pcCase,
@@ -547,6 +584,7 @@ export default function App() {
       storage: checkStorageInterface(drive, motherboard),
       formFactor: checkMotherboardFormFactor(motherboard, pcCase),
       coolerSocket: checkCoolerSocket(cooler, cpu),
+      gpuConnectors: checkGpuPowerConnectors(gpu, psu),
     },
   )
   const priceSlots: PriceBreakdownSlot[] = [
@@ -614,11 +652,12 @@ export default function App() {
           cooler, a case, a power supply, and storage. The planner checks that
           the CPU socket and the memory type match the board, that the memory
           kit fits the board's slots and capacity, that the cooler supports
-          the processor socket, that the supply covers the estimated draw,
-          that the case supports the motherboard form factor, that the cooler
-          and graphics card fit the case, and that the motherboard supports
-          the drive interface. A line at the top of the build counts any
-          compatibility issues. Options that conflict with the parts already
+          the processor socket, that the supply covers the estimated draw
+          and the graphics card's power connectors, that the case supports
+          the motherboard form factor, that the cooler and graphics card fit
+          the case, and that the motherboard supports the drive interface. A
+          line at the top of the build counts any compatibility issues.
+          Options that conflict with the parts already
           chosen are marked in each list and can still be selected. Sample
           prices for the selected parts are listed and totaled below. The
           address bar keeps a link to this build.
@@ -712,7 +751,7 @@ export default function App() {
                 <CatalogOption
                   key={part.id}
                   id={part.id}
-                  label={`${part.name} · ${part.boardPowerWatts}W · ${part.lengthMm}mm · ${formatUsd(part.priceUsd)}`}
+                  label={`${part.name} · ${part.boardPowerWatts}W · ${formatRequiredPowerConnectors(part.powerConnectors)} · ${part.lengthMm}mm · ${formatUsd(part.priceUsd)}`}
                   conflicts={checkPartOption('gpu', part, selected).conflicts}
                 />
               ))}
@@ -772,7 +811,7 @@ export default function App() {
                 <CatalogOption
                   key={part.id}
                   id={part.id}
-                  label={`${part.name} · ${part.wattage}W · ${formatUsd(part.priceUsd)}`}
+                  label={`${part.name} · ${part.wattage}W · ${formatSuppliedPowerConnectors(part.powerConnectors)} · ${formatUsd(part.priceUsd)}`}
                   conflicts={checkPartOption('psu', part, selected).conflicts}
                 />
               ))}
@@ -808,6 +847,7 @@ export default function App() {
           motherboard={motherboard}
         />
         <PowerSupplyStatus cpu={cpu} gpu={gpu} psu={psu} />
+        <GpuConnectorStatus gpu={gpu} psu={psu} />
         <FormFactorStatus motherboard={motherboard} pcCase={pcCase} />
         <ClearanceStatus pcCase={pcCase} gpu={gpu} cooler={cooler} />
         <StorageStatus drive={drive} motherboard={motherboard} />

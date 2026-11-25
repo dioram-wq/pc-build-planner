@@ -76,8 +76,15 @@ function card(
   boardPowerWatts: number,
   name = 'Sample GPU',
   lengthMm = 240,
+  powerConnectors: Gpu['powerConnectors'] = [{ eightPin: 1, twelveVhpwr: 0 }],
 ): Gpu {
-  return { id: `gpu-${boardPowerWatts}`, name, boardPowerWatts, lengthMm }
+  return {
+    id: `gpu-${boardPowerWatts}`,
+    name,
+    boardPowerWatts,
+    lengthMm,
+    powerConnectors,
+  }
 }
 
 function tower(
@@ -107,8 +114,12 @@ function chassis(
   }
 }
 
-function supply(wattage: number, name = 'Sample PSU'): Psu {
-  return { id: `psu-${wattage}`, name, wattage }
+function supply(
+  wattage: number,
+  name = 'Sample PSU',
+  powerConnectors: Psu['powerConnectors'] = { eightPin: 4, twelveVhpwr: 1 },
+): Psu {
+  return { id: `psu-${wattage}`, name, wattage, powerConnectors }
 }
 
 function drive(

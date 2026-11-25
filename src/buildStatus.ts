@@ -3,6 +3,7 @@ import type {
   CoolerSocketCheck,
   Cpu,
   FormFactorCheck,
+  GpuConnectorCheck,
   MemoryCapacityCheck,
   MemoryCheck,
   Motherboard,
@@ -32,12 +33,13 @@ export type BuildStatusChecks = {
   storage: StorageCheck | null
   formFactor: FormFactorCheck | null
   coolerSocket: CoolerSocketCheck | null
+  gpuConnectors: GpuConnectorCheck | null
 }
 
 // Hard conflicts only. A tight supply, a part that is not selected yet, a
-// form factor the parts do not list, memory size the parts do not list, and
-// cooler sockets the parts do not list stay on the detail lines and do not
-// count as compatibility issues.
+// form factor the parts do not list, memory size the parts do not list,
+// cooler sockets the parts do not list, and power connectors the parts do
+// not list stay on the detail lines and do not count as compatibility issues.
 const compatibilityIssueCodes = new Set<string>([
   'socket-mismatch',
   'memory-mismatch',
@@ -49,6 +51,7 @@ const compatibilityIssueCodes = new Set<string>([
   'storage-unsupported',
   'form-factor-unsupported',
   'cooler-socket-unsupported',
+  'gpu-connectors-insufficient',
 ])
 
 export function buildStatusSummary(
@@ -81,6 +84,7 @@ function countCompatibilityIssues(checks: BuildStatusChecks): number {
     checks.storage?.issues,
     checks.formFactor?.issues,
     checks.coolerSocket?.issues,
+    checks.gpuConnectors?.issues,
   ]
 
   let count = 0

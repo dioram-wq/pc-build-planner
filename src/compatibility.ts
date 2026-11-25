@@ -250,11 +250,17 @@ function missingCapacityMessage(
   return `${boardName} does not list a maximum memory size.`
 }
 
+export type PowerConnectorCount = {
+  eightPin: number
+  twelveVhpwr: number
+}
+
 export type Gpu = {
   id: string
   name: string
   boardPowerWatts: number
   lengthMm: number
+  powerConnectors: readonly PowerConnectorCount[]
 }
 
 export type CpuCooler = {
@@ -395,6 +401,7 @@ export type Psu = {
   id: string
   name: string
   wattage: number
+  powerConnectors: PowerConnectorCount
 }
 
 export const PLATFORM_ALLOWANCE_WATTS = 100
@@ -475,6 +482,159 @@ export function checkPowerSupply(
     estimatedDrawWatts,
     recommendedWatts,
     issues: [],
+  }
+}
+
+export type GpuConnectorStatus = 'ok' | 'unsupported' | 'missing'
+
+export type GpuConnectorIssue = {
+  code: 'gpu-connectors-insufficient' | 'gpu-connectors-missing'
+  message: string
+}
+
+export type GpuConnectorCheck = {
+  status: GpuConnectorStatus
+  issues: GpuConnectorIssue[]
+}
+
+export type GpuConnectorCard = {
+  name: string
+  powerConnectors?: readonly unknown[] | null
+}
+
+export type PsuConnectorSupply = {
+  name: string
+  powerConnectors?: unknown
+}
+
+function listedConnectorCount(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    return null
+  }
+  return value
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === 'object'
+}
+
+function listedConnectorSet(value: unknown): PowerConnectorCount | null {
+  if (!isRecord(value)) return null
+  const eightPin = listedConnectorCount(value.eightPin)
+  const twelveVhpwr = listedConnectorCount(value.twelveVhpwr)
+  if (eightPin == null || twelveVhpwr == null) return null
+  return { eightPin, twelveVhpwr }
+}
+
+function listedRequirements(
+  requirements: readonly unknown[] | null | undefined,
+): PowerConnectorCount[] | null {
+  if (!Array.isArray(requirements) || requirements.length === 0) return null
+  const listed: PowerConnectorCount[] = []
+  for (const requirement of requirements) {
+    const set = listedConnectorSet(requirement)
+    if (set) listed.push(set)
+  }
+  if (listed.length === 0) return null
+  return listed
+}
+
+function formatConnectorBundle(counts: PowerConnectorCount): string {
+  const parts: string[] = []
+  if (counts.eightPin > 0) parts.push(`${counts.eightPin}x 8-pin`)
+  if (counts.twelveVhpwr > 0) parts.push(`${counts.twelveVhpwr}x 12VHPWR`)
+  if (parts.length === 0) return 'no power connectors'
+  if (parts.length === 1) return parts[0]
+  return `${parts[0]} and ${parts[1]}`
+}
+
+export function formatRequiredPowerConnectors(
+  requirements: readonly PowerConnectorCount[],
+): string {
+  if (requirements.length === 0) return 'no power connectors'
+  return requirements
+    .map((requirement) => formatConnectorBundle(requirement))
+    .join(' or ')
+}
+
+export function formatSuppliedPowerConnectors(counts: PowerConnectorCount): string {
+  const parts: string[] = []
+  if (counts.eightPin > 0) parts.push(`${counts.eightPin}x 8-pin`)
+  if (counts.twelveVhpwr > 0) parts.push(`${counts.twelveVhpwr}x 12VHPWR`)
+  if (parts.length === 0) return 'no 8-pin or 12VHPWR connectors'
+  return parts.join(', ')
+}
+
+function covers(supply: PowerConnectorCount, need: PowerConnectorCount): boolean {
+  return supply.eightPin >= need.eightPin && supply.twelveVhpwr >= need.twelveVhpwr
+}
+
+function missingConnectorCheck(message: string): GpuConnectorCheck {
+  return {
+    status: 'missing',
+    issues: [{ code: 'gpu-connectors-missing', message }],
+  }
+}
+
+function missingConnectorMessage(
+  gpuName: string,
+  psuName: string,
+  gpuListed: boolean,
+  psuListed: boolean,
+): string {
+  if (!gpuListed && !psuListed) {
+    return `${gpuName} does not list power connectors, and ${psuName} does not list the power connectors it provides.`
+  }
+
+  if (!gpuListed) {
+    return `${gpuName} does not list power connectors.`
+  }
+
+  return `${psuName} does not list the power connectors it provides.`
+}
+
+export function checkGpuPowerConnectors(
+  gpu: GpuConnectorCard | null,
+  psu: PsuConnectorSupply | null,
+): GpuConnectorCheck {
+  if (!gpu) {
+    return missingConnectorCheck(
+      'Select a graphics card to check its power connectors.',
+    )
+  }
+
+  if (!psu) {
+    return missingConnectorCheck(
+      'Select a power supply to check the graphics card power connectors.',
+    )
+  }
+
+  const requirements = listedRequirements(gpu.powerConnectors)
+  const supplied = listedConnectorSet(psu.powerConnectors)
+
+  if (!requirements || !supplied) {
+    return missingConnectorCheck(
+      missingConnectorMessage(
+        gpu.name,
+        psu.name,
+        requirements != null,
+        supplied != null,
+      ),
+    )
+  }
+
+  if (requirements.some((requirement) => covers(supplied, requirement))) {
+    return { status: 'ok', issues: [] }
+  }
+
+  return {
+    status: 'unsupported',
+    issues: [
+      {
+        code: 'gpu-connectors-insufficient',
+        message: `${gpu.name} (${formatRequiredPowerConnectors(requirements)}) does not fit ${psu.name} (${formatSuppliedPowerConnectors(supplied)}).`,
+      },
+    ],
   }
 }
 
