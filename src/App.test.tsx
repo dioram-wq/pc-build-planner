@@ -74,6 +74,85 @@ describe('App', () => {
     ).toBeTruthy()
   })
 
+  it('accepts a cooler that supports the processor socket', () => {
+    render(<App />)
+
+    expect(
+      screen.getByText(
+        'Compatible. Noctua NH-L12S supports AMD Ryzen 5 7600 (AM5).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Noctua NH-L12S · AM4, AM5, LGA1700, LGA1851 · 70mm · $70',
+      }).className,
+    ).not.toContain('incompatible')
+    expect(
+      screen.getByRole('option', {
+        name: 'Noctua NH-L9a · AM4, AM5 · 37mm · $45',
+      }).className,
+    ).not.toContain('incompatible')
+  })
+
+  it('flags a cooler that does not support the processor socket', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('CPU'), {
+      target: { value: 'cpu-14600k' },
+    })
+    fireEvent.change(screen.getByLabelText('Motherboard'), {
+      target: { value: 'board-z790' },
+    })
+    fireEvent.change(screen.getByLabelText('CPU cooler'), {
+      target: { value: 'cooler-l9a' },
+    })
+
+    expect(screen.getByText('Cooler does not fit.')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'Noctua NH-L9a (AM4, AM5) does not support Intel Core i5-14600K (LGA1700).',
+      ),
+    ).toBeTruthy()
+    expect(screen.getByText('Compatible. Both parts use LGA1700.')).toBeTruthy()
+    expect(
+      screen.getByRole('status', {
+        name: 'Build status: 1 compatibility issue',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Noctua NH-L9a · AM4, AM5 · 37mm · $45 — incompatible: socket LGA1700',
+      }),
+    ).toHaveProperty('disabled', false)
+    expect(
+      screen.getByRole('option', {
+        name: 'Intel Core i5-14600K · LGA1700 · $229 — incompatible: cooler supports AM4, AM5',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Noctua NH-L12S · AM4, AM5, LGA1700, LGA1851 · 70mm · $70',
+      }).className,
+    ).not.toContain('incompatible')
+
+    fireEvent.change(screen.getByLabelText('CPU cooler'), {
+      target: { value: '' },
+    })
+
+    expect(screen.getByText('No CPU cooler selected.')).toBeTruthy()
+    expect(
+      screen.getByText('Select a CPU cooler to check the sockets it supports.'),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Intel Core i5-14600K · LGA1700 · $229',
+      }).className,
+    ).not.toContain('incompatible')
+  })
+
   it('flags an ATX motherboard that a Mini-ITX case cannot take', () => {
     render(<App />)
 

@@ -203,6 +203,22 @@ describe('checkPartOption', () => {
       )
     })
 
+    it('accepts a cooler that supports the processor socket', () => {
+      const cooler = tower(37, 'Noctua NH-L9a', ['AM4', 'AM5'])
+      const build = selected({ cpu: ryzen(), cooler })
+
+      expect(checkPartOption('cooler', cooler, build)).toEqual(compatible)
+      expect(checkPartOption('cpu', ryzen(), build)).toEqual(compatible)
+    })
+
+    it('accepts a cooler that lists only the processor socket', () => {
+      const cooler = tower(40, 'AM5 only', ['AM5'])
+      const build = selected({ cpu: ryzen(), cooler, case: north() })
+
+      expect(checkPartOption('cooler', cooler, build)).toEqual(compatible)
+      expect(checkPartOption('cpu', ryzen(), build)).toEqual(compatible)
+    })
+
     it('accepts a graphics card and cooler that fit the case exactly', () => {
       const fit = chassis(240, 70)
       const build = selected({
@@ -454,6 +470,56 @@ describe('checkPartOption', () => {
       ).toEqual({ compatible: false, conflicts: ['271mm GPU'] })
     })
 
+    it('marks a cooler that misses the processor socket, and the processor for that cooler', () => {
+      const cooler = tower(37, 'Noctua NH-L9a', ['AM4', 'AM5'])
+      const intel = cpu('LGA1700', 'Intel Core i5-14600K', 125)
+
+      expect(
+        checkPartOption('cooler', cooler, selected({ cpu: intel })),
+      ).toEqual({ compatible: false, conflicts: ['socket LGA1700'] })
+      expect(checkPartOption('cpu', intel, selected({ cooler }))).toEqual({
+        compatible: false,
+        conflicts: ['cooler supports AM4, AM5'],
+      })
+    })
+
+    it('lists the cooler sockets after the motherboard socket', () => {
+      const cooler = tower(37, 'Noctua NH-L9a', ['AM4', 'AM5'])
+
+      expect(
+        checkPartOption(
+          'cpu',
+          cpu('LGA1700', 'Intel Core i5-14600K', 125),
+          selected({
+            motherboard: board('AM5', 'ASUS TUF Gaming B650-PLUS'),
+            cooler,
+          }),
+        ),
+      ).toEqual({
+        compatible: false,
+        conflicts: ['socket AM5', 'cooler supports AM4, AM5'],
+      })
+    })
+
+    it('lists the processor socket before the cooler height limit', () => {
+      const cooler = tower(165, 'Noctua NH-D15', ['AM4', 'AM5'])
+      const pcCase = chassis(330, 155, 'Cooler Master NR200P')
+
+      expect(
+        checkPartOption(
+          'cooler',
+          cooler,
+          selected({
+            cpu: cpu('LGA1700', 'Intel Core i5-14600K', 125),
+            case: pcCase,
+          }),
+        ),
+      ).toEqual({
+        compatible: false,
+        conflicts: ['socket LGA1700', '155mm cooler limit'],
+      })
+    })
+
     it('marks a cooler one millimetre over the case limit', () => {
       const pcCase = chassis(330, 155, 'Cooler Master NR200P')
       const cooler = tower(156, 'Noctua NH-D15')
@@ -655,6 +721,44 @@ describe('checkPartOption', () => {
       expect(
         checkPartOption('gpu', card(450, 'Huge', 400), selected()),
       ).toEqual(compatible)
+    })
+
+    it('skips cooler sockets until a processor or a cooler is selected', () => {
+      const intel = cpu('LGA1700', 'Intel Core i5-14600K', 125)
+      const amdOnly = tower(37, 'Noctua NH-L9a', ['AM4', 'AM5'])
+
+      expect(checkPartOption('cooler', amdOnly, selected())).toEqual(compatible)
+      expect(checkPartOption('cpu', intel, selected())).toEqual(compatible)
+    })
+
+    it('leaves the options unmarked when the socket data is missing', () => {
+      const intel = cpu('LGA1700', 'Intel Core i5-14600K', 125)
+      const cooler = tower(37, 'Noctua NH-L9a', ['AM4', 'AM5'])
+      const bareCooler = {
+        ...cooler,
+        sockets: undefined,
+      } as unknown as CpuCooler
+      const emptyCooler = {
+        ...cooler,
+        sockets: [],
+      } as unknown as CpuCooler
+      const bareCpu = { ...intel, socket: undefined } as unknown as Cpu
+
+      expect(
+        checkPartOption('cooler', bareCooler, selected({ cpu: intel })),
+      ).toEqual(compatible)
+      expect(
+        checkPartOption('cpu', intel, selected({ cooler: bareCooler })),
+      ).toEqual(compatible)
+      expect(
+        checkPartOption('cooler', emptyCooler, selected({ cpu: intel })),
+      ).toEqual(compatible)
+      expect(
+        checkPartOption('cooler', cooler, selected({ cpu: bareCpu })),
+      ).toEqual(compatible)
+      expect(checkPartOption('cpu', bareCpu, selected({ cooler }))).toEqual(
+        compatible,
+      )
     })
 
     it('skips cooler height when no case is selected', () => {

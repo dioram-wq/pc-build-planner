@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   checkCaseClearance,
+  checkCoolerSocket,
   checkCpuSocket,
   checkMemoryCapacity,
   checkMemoryType,
@@ -155,6 +156,214 @@ describe('checkCpuSocket', () => {
           .compatible,
       ).toBe(false)
     }
+  })
+})
+
+describe('checkCoolerSocket', () => {
+  const l12s = () =>
+    tower(70, 'Noctua NH-L12S', ['AM4', 'AM5', 'LGA1700', 'LGA1851'])
+  const l9a = () => tower(37, 'Noctua NH-L9a', ['AM4', 'AM5'])
+  const ryzen = () => cpu('AM5', 'AMD Ryzen 5 7600')
+  const intel = () => cpu('LGA1700', 'Intel Core i5-14600K', 125)
+
+  it('accepts a cooler that lists the processor socket', () => {
+    expect(checkCoolerSocket(l12s(), ryzen())).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts a cooler that lists only that socket', () => {
+    expect(checkCoolerSocket(tower(37, 'AM5 only', ['AM5']), ryzen())).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('treats each supported socket as its own match', () => {
+    const sockets = ['AM4', 'AM5', 'LGA1700', 'LGA1851'] as const
+
+    for (const socket of sockets) {
+      expect(
+        checkCoolerSocket(tower(120, 'One socket', [socket]), cpu(socket))
+          .status,
+      ).toBe('ok')
+      expect(
+        checkCoolerSocket(
+          tower(120, 'Other socket', [socket === 'AM5' ? 'AM4' : 'AM5']),
+          cpu(socket),
+        ).status,
+      ).toBe('unsupported')
+    }
+  })
+
+  it('rejects a cooler that leaves the processor socket off its list', () => {
+    expect(checkCoolerSocket(l9a(), intel())).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'cooler-socket-unsupported',
+          message:
+            'Noctua NH-L9a (AM4, AM5) does not support Intel Core i5-14600K (LGA1700).',
+        },
+      ],
+    })
+  })
+
+  it('names every listed socket when the cooler misses', () => {
+    expect(
+      checkCoolerSocket(
+        tower(160, 'Intel tower', ['LGA1700', 'LGA1851']),
+        ryzen(),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'cooler-socket-unsupported',
+          message:
+            'Intel tower (LGA1700, LGA1851) does not support AMD Ryzen 5 7600 (AM5).',
+        },
+      ],
+    })
+  })
+
+  it('asks for a cooler when none is selected', () => {
+    expect(checkCoolerSocket(null, ryzen())).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: 'Select a CPU cooler to check the sockets it supports.',
+        },
+      ],
+    })
+  })
+
+  it('asks for a processor when none is selected', () => {
+    expect(checkCoolerSocket(l12s(), null)).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: 'Select a processor to check the cooler sockets.',
+        },
+      ],
+    })
+  })
+
+  it('asks for a cooler when neither part is selected', () => {
+    expect(checkCoolerSocket(null, null)).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: 'Select a CPU cooler to check the sockets it supports.',
+        },
+      ],
+    })
+  })
+
+  it('reports a cooler that does not list the sockets it supports', () => {
+    expect(checkCoolerSocket({ name: 'Unlisted cooler' }, ryzen())).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: 'Unlisted cooler does not list the sockets it supports.',
+        },
+      ],
+    })
+
+    expect(
+      checkCoolerSocket({ name: 'Unlisted cooler', sockets: null }, ryzen())
+        .status,
+    ).toBe('missing')
+    expect(
+      checkCoolerSocket({ name: 'Unlisted cooler', sockets: [] }, ryzen())
+        .issues[0]?.message,
+    ).toBe('Unlisted cooler does not list the sockets it supports.')
+  })
+
+  it('reports a processor that does not list a socket', () => {
+    expect(checkCoolerSocket(l12s(), { name: 'Mystery CPU' })).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: 'Mystery CPU does not list a socket.',
+        },
+      ],
+    })
+
+    expect(
+      checkCoolerSocket(l12s(), { name: 'Mystery CPU', socket: null }).status,
+    ).toBe('missing')
+  })
+
+  it('reports both parts when neither lists a socket', () => {
+    expect(
+      checkCoolerSocket({ name: 'Unlisted cooler' }, { name: 'Mystery CPU' }),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message:
+            'Unlisted cooler does not list the sockets it supports, and Mystery CPU does not list a socket.',
+        },
+      ],
+    })
+  })
+
+  it('treats an unrecognized socket as missing data', () => {
+    expect(
+      checkCoolerSocket(l12s(), {
+        name: 'Odd CPU',
+        socket: 'TR4' as 'AM5',
+      }),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: 'Odd CPU does not list a socket.',
+        },
+      ],
+    })
+
+    expect(
+      checkCoolerSocket(
+        { name: 'Odd cooler', sockets: ['TR4' as 'AM5'] },
+        ryzen(),
+      ),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: 'Odd cooler does not list the sockets it supports.',
+        },
+      ],
+    })
+  })
+
+  it('keeps a known socket and ignores one the catalog does not know', () => {
+    expect(
+      checkCoolerSocket(
+        { name: 'Mixed cooler', sockets: ['AM5', 'TR4' as 'AM4'] },
+        ryzen(),
+      ),
+    ).toEqual({ status: 'ok', issues: [] })
+
+    const missed = checkCoolerSocket(
+      { name: 'Mixed cooler', sockets: ['AM4', 'TR4' as 'AM5'] },
+      intel(),
+    )
+    expect(missed.status).toBe('unsupported')
+    expect(missed.issues[0]?.message).toBe(
+      'Mixed cooler (AM4) does not support Intel Core i5-14600K (LGA1700).',
+    )
   })
 })
 
@@ -1363,6 +1572,46 @@ describe('sample catalog', () => {
     expect(over.status).toBe('unsupported')
     expect(over.moduleCount).toBe('ok')
     expect(over.capacity).toBe('over')
+  })
+
+  it('records the sockets every cooler supports', () => {
+    const sockets = ['AM4', 'AM5', 'LGA1700', 'LGA1851'] as const
+
+    expect(coolers.length).toBeGreaterThan(0)
+    for (const part of coolers) {
+      expect(part.sockets.length).toBeGreaterThan(0)
+      for (const socket of part.sockets) {
+        expect(sockets).toContain(socket)
+      }
+    }
+  })
+
+  it('includes a cooler that fits each sample CPU and one an Intel CPU does not', () => {
+    for (const part of cpus) {
+      expect(
+        coolers.some((cooler) => checkCoolerSocket(cooler, part).status === 'ok'),
+      ).toBe(true)
+    }
+
+    const intel = cpus.find((part) => part.id === 'cpu-14600k')
+    const ryzen = cpus.find((part) => part.id === 'cpu-7600')
+    const amdCooler = coolers.find((part) => part.id === 'cooler-l9a')
+    const lowProfile = coolers.find((part) => part.id === 'cooler-l12s')
+    if (!intel || !ryzen || !amdCooler || !lowProfile) {
+      throw new Error('expected the sample CPUs and coolers')
+    }
+
+    expect(checkCoolerSocket(lowProfile, ryzen)).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+    expect(checkCoolerSocket(amdCooler, ryzen).status).toBe('ok')
+
+    const mismatch = checkCoolerSocket(amdCooler, intel)
+    expect(mismatch.status).toBe('unsupported')
+    expect(mismatch.issues.map((issue) => issue.code)).toEqual([
+      'cooler-socket-unsupported',
+    ])
   })
 
   it('pairs every sample drive with a motherboard that supports it', () => {

@@ -417,6 +417,56 @@ describe('buildStatusSummary', () => {
     ).toEqual({ level: 'issue', text: '1 compatibility issue' })
   })
 
+  it('counts a cooler that does not support the processor socket', () => {
+    const intel = cpu('LGA1700', 'Intel Core i5-14600K', 125)
+    const z790 = board('LGA1700', 'Gigabyte Z790 Aorus Elite', 'DDR5', 4, 6)
+    const checks = checksFor({
+      cpu: intel,
+      motherboard: z790,
+      memory: kit('DDR5'),
+      gpu: card(115, 'NVIDIA GeForce RTX 4060', 240),
+      cooler: tower(37, 'Noctua NH-L9a', ['AM4', 'AM5']),
+      pcCase: chassis(355, 170, 'Fractal Design North'),
+      psu: supply(650, 'Corsair RM650x'),
+      storage: drive('M.2 NVMe', 'WD Black SN770 1TB'),
+    })
+
+    expect(checks.coolerSocket.status).toBe('unsupported')
+    expect(checks.socket.compatible).toBe(true)
+    expect(
+      buildStatusSummary({ cpu: intel, motherboard: z790 }, checks),
+    ).toEqual({ level: 'issue', text: '1 compatibility issue' })
+  })
+
+  it('ignores a missing cooler and sockets the parts do not list', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4)
+    const checks = passing()
+
+    expect(checks.coolerSocket.status).toBe('ok')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.coolerSocket = checkCoolerSocket(null, ryzen)
+    expect(checks.coolerSocket.status).toBe('missing')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.coolerSocket = checkCoolerSocket({ name: 'Unlisted cooler' }, ryzen)
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.coolerSocket = checkCoolerSocket(tower(70, 'Noctua NH-L12S'), {
+      name: 'Mystery CPU',
+    })
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+  })
+
   it('ignores a missing case and parts that do not list a form factor', () => {
     const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
     const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4, 'ATX')
