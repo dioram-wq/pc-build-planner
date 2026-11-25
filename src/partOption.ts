@@ -1,5 +1,6 @@
 import {
   checkCaseClearance,
+  checkCoolerSocket,
   checkCpuSocket,
   checkMemoryCapacity,
   checkMemoryType,
@@ -9,6 +10,7 @@ import {
   formatDimmSlots,
   formatFormFactorList,
   formatModuleCount,
+  formatSocketList,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -136,12 +138,21 @@ function optionResult(conflicts: string[]): PartOptionCheck {
 }
 
 function cpuConflicts(candidate: Cpu, build: SelectedBuild): PartOptionCheck {
-  if (!build.motherboard) return optionResult([])
+  const conflicts: string[] = []
 
-  const socket = checkCpuSocket(candidate, build.motherboard)
-  if (socket.compatible) return optionResult([])
+  if (
+    build.motherboard &&
+    !checkCpuSocket(candidate, build.motherboard).compatible
+  ) {
+    conflicts.push(`socket ${build.motherboard.socket}`)
+  }
 
-  return optionResult([`socket ${build.motherboard.socket}`])
+  if (build.cooler) {
+    const cooler = cpuCoolerSocketConflict(candidate, build.cooler)
+    if (cooler) conflicts.push(cooler)
+  }
+
+  return optionResult(conflicts)
 }
 
 function motherboardConflicts(
@@ -203,12 +214,21 @@ function coolerConflicts(
   candidate: CpuCooler,
   build: SelectedBuild,
 ): PartOptionCheck {
-  if (!build.case) return optionResult([])
+  const conflicts: string[] = []
 
-  const clearance = checkCaseClearance(build.case, null, candidate)
-  if (clearance.coolerHeight !== 'too-tall') return optionResult([])
+  if (build.cpu) {
+    const socket = coolerSocketConflict(candidate, build.cpu)
+    if (socket) conflicts.push(socket)
+  }
 
-  return optionResult([`${build.case.maxCoolerHeightMm}mm cooler limit`])
+  if (build.case) {
+    const clearance = checkCaseClearance(build.case, null, candidate)
+    if (clearance.coolerHeight === 'too-tall') {
+      conflicts.push(`${build.case.maxCoolerHeightMm}mm cooler limit`)
+    }
+  }
+
+  return optionResult(conflicts)
 }
 
 function caseConflicts(candidate: Case, build: SelectedBuild): PartOptionCheck {
@@ -298,6 +318,20 @@ function caseFormFactorConflict(
   if (result.status !== 'unsupported' || !motherboard.formFactor) return null
 
   return `${motherboard.formFactor} motherboard`
+}
+
+function coolerSocketConflict(cooler: CpuCooler, cpu: Cpu): string | null {
+  const result = checkCoolerSocket(cooler, cpu)
+  if (result.status !== 'unsupported') return null
+
+  return `socket ${cpu.socket}`
+}
+
+function cpuCoolerSocketConflict(cpu: Cpu, cooler: CpuCooler): string | null {
+  const result = checkCoolerSocket(cooler, cpu)
+  if (result.status !== 'unsupported') return null
+
+  return `cooler supports ${formatSocketList(cooler.sockets)}`
 }
 
 function storageSlotConflict(

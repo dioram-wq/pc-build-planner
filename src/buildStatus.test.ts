@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildStatusSummary, type BuildStatusChecks } from './buildStatus.ts'
 import {
   checkCaseClearance,
+  checkCoolerSocket,
   checkCpuSocket,
   checkMemoryCapacity,
   checkMemoryType,
@@ -66,8 +67,12 @@ function card(
   return { id: `gpu-${boardPowerWatts}`, name, boardPowerWatts, lengthMm }
 }
 
-function tower(heightMm: number, name = 'Sample cooler'): CpuCooler {
-  return { id: `cooler-${heightMm}`, name, heightMm }
+function tower(
+  heightMm: number,
+  name = 'Sample cooler',
+  sockets: readonly CpuSocket[] = ['AM4', 'AM5', 'LGA1700', 'LGA1851'],
+): CpuCooler {
+  return { id: `cooler-${heightMm}`, name, heightMm, sockets }
 }
 
 function chassis(
@@ -118,6 +123,7 @@ function checksFor(parts: {
     clearance: checkCaseClearance(parts.pcCase, parts.gpu, parts.cooler),
     storage: checkStorageInterface(parts.storage, parts.motherboard),
     formFactor: checkMotherboardFormFactor(parts.motherboard, parts.pcCase),
+    coolerSocket: checkCoolerSocket(parts.cooler, parts.cpu),
   }
 }
 
@@ -146,6 +152,7 @@ describe('buildStatusSummary', () => {
           clearance: null,
           storage: null,
           formFactor: null,
+          coolerSocket: null,
         },
       ),
     ).toEqual({
@@ -164,6 +171,7 @@ describe('buildStatusSummary', () => {
       clearance: null,
       storage: null,
       formFactor: null,
+      coolerSocket: null,
     }
 
     expect(
@@ -198,6 +206,7 @@ describe('buildStatusSummary', () => {
         ),
         storage: null,
         formFactor: null,
+        coolerSocket: null,
       },
     )
 

@@ -261,6 +261,126 @@ export type CpuCooler = {
   id: string
   name: string
   heightMm: number
+  sockets: readonly CpuSocket[]
+}
+
+export type CoolerSocketStatus = 'ok' | 'unsupported' | 'missing'
+
+export type CoolerSocketIssue = {
+  code: 'cooler-socket-unsupported' | 'cooler-socket-missing'
+  message: string
+}
+
+export type CoolerSocketCheck = {
+  status: CoolerSocketStatus
+  issues: CoolerSocketIssue[]
+}
+
+export type CoolerMount = {
+  name: string
+  sockets?: readonly CpuSocket[] | null
+}
+
+export type CoolerSocketCpu = {
+  name: string
+  socket?: CpuSocket | null
+}
+
+const cpuSockets: readonly CpuSocket[] = ['AM4', 'AM5', 'LGA1700', 'LGA1851']
+
+export function formatSocketList(sockets: readonly CpuSocket[]): string {
+  return sockets.join(', ')
+}
+
+function isCpuSocket(value: unknown): value is CpuSocket {
+  return cpuSockets.some((socket) => socket === value)
+}
+
+function listedSockets(
+  sockets: readonly CpuSocket[] | null | undefined,
+): CpuSocket[] {
+  if (!sockets) return []
+  return sockets.filter(isCpuSocket)
+}
+
+export function checkCoolerSocket(
+  cooler: CoolerMount | null,
+  cpu: CoolerSocketCpu | null,
+): CoolerSocketCheck {
+  if (!cooler) {
+    return {
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: 'Select a CPU cooler to check the sockets it supports.',
+        },
+      ],
+    }
+  }
+
+  if (!cpu) {
+    return {
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: 'Select a processor to check the cooler sockets.',
+        },
+      ],
+    }
+  }
+
+  const socket = isCpuSocket(cpu.socket) ? cpu.socket : null
+  const supported = listedSockets(cooler.sockets)
+
+  if (!socket || supported.length === 0) {
+    return {
+      status: 'missing',
+      issues: [
+        {
+          code: 'cooler-socket-missing',
+          message: missingCoolerSocketMessage(
+            cooler.name,
+            cpu.name,
+            supported.length > 0,
+            socket != null,
+          ),
+        },
+      ],
+    }
+  }
+
+  if (supported.includes(socket)) {
+    return { status: 'ok', issues: [] }
+  }
+
+  return {
+    status: 'unsupported',
+    issues: [
+      {
+        code: 'cooler-socket-unsupported',
+        message: `${cooler.name} (${formatSocketList(supported)}) does not support ${cpu.name} (${socket}).`,
+      },
+    ],
+  }
+}
+
+function missingCoolerSocketMessage(
+  coolerName: string,
+  cpuName: string,
+  coolerListed: boolean,
+  cpuListed: boolean,
+): string {
+  if (!coolerListed && !cpuListed) {
+    return `${coolerName} does not list the sockets it supports, and ${cpuName} does not list a socket.`
+  }
+
+  if (!coolerListed) {
+    return `${coolerName} does not list the sockets it supports.`
+  }
+
+  return `${cpuName} does not list a socket.`
 }
 
 export type Case = {

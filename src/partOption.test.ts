@@ -60,8 +60,12 @@ function card(boardPowerWatts: number, name = 'Sample GPU', lengthMm = 240): Gpu
   return { id: `gpu-${boardPowerWatts}`, name, boardPowerWatts, lengthMm }
 }
 
-function tower(heightMm: number, name = 'Sample cooler'): CpuCooler {
-  return { id: `cooler-${heightMm}`, name, heightMm }
+function tower(
+  heightMm: number,
+  name = 'Sample cooler',
+  sockets: readonly CpuSocket[] = ['AM4', 'AM5', 'LGA1700', 'LGA1851'],
+): CpuCooler {
+  return { id: `cooler-${heightMm}`, name, heightMm, sockets }
 }
 
 function chassis(

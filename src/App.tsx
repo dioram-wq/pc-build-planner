@@ -5,6 +5,7 @@ import {
 } from './buildStatus.ts'
 import {
   checkCaseClearance,
+  checkCoolerSocket,
   checkCpuSocket,
   checkMemoryCapacity,
   checkMemoryType,
@@ -14,6 +15,7 @@ import {
   formatDimmSlots,
   formatFormFactorList,
   formatModuleCount,
+  formatSocketList,
   type Case,
   type Cpu,
   type CpuCooler,
@@ -162,6 +164,44 @@ function SocketStatus({
   return (
     <div className="status bad" role="status">
       <p>Incompatible.</p>
+      <ul>
+        {result.issues.map((issue) => (
+          <li key={issue.code}>{issue.message}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function CoolerSocketStatus({
+  cooler,
+  cpu,
+}: {
+  cooler: CpuCooler | null
+  cpu: Cpu
+}) {
+  const result = checkCoolerSocket(cooler, cpu)
+
+  if (result.status === 'ok' && cooler) {
+    return (
+      <p className="status ok" role="status">
+        {`Compatible. ${cooler.name} supports ${cpu.name} (${cpu.socket}).`}
+      </p>
+    )
+  }
+
+  let heading = 'No CPU cooler selected.'
+  let tone = 'missing'
+  if (result.status === 'unsupported') {
+    heading = 'Cooler does not fit.'
+    tone = 'bad'
+  } else if (cooler) {
+    heading = 'Cooler sockets unknown.'
+  }
+
+  return (
+    <div className={`status ${tone}`} role="status">
+      <p>{heading}</p>
       <ul>
         {result.issues.map((issue) => (
           <li key={issue.code}>{issue.message}</li>
@@ -506,6 +546,7 @@ export default function App() {
       clearance: checkCaseClearance(pcCase, gpu, cooler),
       storage: checkStorageInterface(drive, motherboard),
       formFactor: checkMotherboardFormFactor(motherboard, pcCase),
+      coolerSocket: checkCoolerSocket(cooler, cpu),
     },
   )
   const priceSlots: PriceBreakdownSlot[] = [
@@ -572,14 +613,15 @@ export default function App() {
           Choose a processor, a motherboard, memory, a graphics card, a CPU
           cooler, a case, a power supply, and storage. The planner checks that
           the CPU socket and the memory type match the board, that the memory
-          kit fits the board's slots and capacity, that the supply covers the
-          estimated draw, that the case supports the motherboard form factor,
-          that the cooler and graphics card fit the case, and that the
-          motherboard supports the drive interface. A line
-          at the top of the build counts any compatibility issues. Options
-          that conflict with the parts already chosen are marked in each list
-          and can still be selected. Sample prices for the selected parts are
-          listed and totaled below. The address bar keeps a link to this build.
+          kit fits the board's slots and capacity, that the cooler supports
+          the processor socket, that the supply covers the estimated draw,
+          that the case supports the motherboard form factor, that the cooler
+          and graphics card fit the case, and that the motherboard supports
+          the drive interface. A line at the top of the build counts any
+          compatibility issues. Options that conflict with the parts already
+          chosen are marked in each list and can still be selected. Sample
+          prices for the selected parts are listed and totaled below. The
+          address bar keeps a link to this build.
         </p>
       </header>
 
@@ -690,7 +732,7 @@ export default function App() {
                 <CatalogOption
                   key={part.id}
                   id={part.id}
-                  label={`${part.name} · ${part.heightMm}mm · ${formatUsd(part.priceUsd)}`}
+                  label={`${part.name} · ${formatSocketList(part.sockets)} · ${part.heightMm}mm · ${formatUsd(part.priceUsd)}`}
                   conflicts={checkPartOption('cooler', part, selected).conflicts}
                 />
               ))}
@@ -759,6 +801,7 @@ export default function App() {
         </div>
         <PriceBreakdown slots={priceSlots} />
         <SocketStatus cpu={cpu} motherboard={motherboard} />
+        <CoolerSocketStatus cooler={cooler} cpu={cpu} />
         <MemoryStatus memory={selectedMemory} motherboard={motherboard} />
         <MemoryCapacityStatus
           memory={selectedMemory}

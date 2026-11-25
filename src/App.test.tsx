@@ -873,11 +873,13 @@ describe('App', () => {
     ).toHaveProperty('disabled', false)
     expect(
       screen.getByRole('option', {
-        name: 'Noctua NH-L12S · 70mm · $70 — incompatible: 61mm cooler limit',
+        name: 'Noctua NH-L12S · AM4, AM5, LGA1700, LGA1851 · 70mm · $70 — incompatible: 61mm cooler limit',
       }),
     ).toBeTruthy()
     expect(
-      screen.getByRole('option', { name: 'Noctua NH-L9a · 37mm · $45' }).className,
+      screen.getByRole('option', {
+        name: 'Noctua NH-L9a · AM4, AM5 · 37mm · $45',
+      }).className,
     ).not.toContain('incompatible')
     expect(
       screen.getByRole('option', {
@@ -916,7 +918,9 @@ describe('App', () => {
       }).className,
     ).not.toContain('incompatible')
     expect(
-      screen.getByRole('option', { name: 'Noctua NH-D15 · 165mm · $110' }).className,
+      screen.getByRole('option', {
+        name: 'Noctua NH-D15 · AM4, AM5, LGA1700, LGA1851 · 165mm · $110',
+      }).className,
     ).not.toContain('incompatible')
   })
 

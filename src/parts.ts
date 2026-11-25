@@ -177,14 +177,30 @@ const gpuCatalog = [
 export const gpus = applyPrices(gpuCatalog, samplePricesUsd)
 
 const coolerCatalog = [
-  { id: 'cooler-l12s', name: 'Noctua NH-L12S', heightMm: 70 },
-  { id: 'cooler-l9a', name: 'Noctua NH-L9a', heightMm: 37 },
+  {
+    id: 'cooler-l12s',
+    name: 'Noctua NH-L12S',
+    heightMm: 70,
+    sockets: ['AM4', 'AM5', 'LGA1700', 'LGA1851'],
+  },
+  {
+    id: 'cooler-l9a',
+    name: 'Noctua NH-L9a',
+    heightMm: 37,
+    sockets: ['AM4', 'AM5'],
+  },
   {
     id: 'cooler-pa120',
     name: 'Thermalright Peerless Assassin 120',
     heightMm: 157,
+    sockets: ['AM4', 'AM5', 'LGA1700', 'LGA1851'],
   },
-  { id: 'cooler-nhd15', name: 'Noctua NH-D15', heightMm: 165 },
+  {
+    id: 'cooler-nhd15',
+    name: 'Noctua NH-D15',
+    heightMm: 165,
+    sockets: ['AM4', 'AM5', 'LGA1700', 'LGA1851'],
+  },
 ] as const satisfies readonly CpuCooler[]
 
 export const coolers = applyPrices(coolerCatalog, samplePricesUsd)
