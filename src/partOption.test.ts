@@ -749,6 +749,103 @@ describe('checkPartOption', () => {
       })
     })
 
+    it('marks a supply the case does not list, and the case for that supply', () => {
+      const psu = supply(
+        750,
+        'Corsair SF750',
+        { eightPin: 4, twelveVhpwr: 0 },
+        'SFX',
+      )
+      const pcCase = chassis(
+        355,
+        170,
+        'Fractal Design North',
+        ['ATX', 'Micro-ATX', 'Mini-ITX'],
+        ['ATX'],
+      )
+      const build = selected({ psu, case: pcCase })
+
+      expect(checkPartOption('psu', psu, build)).toEqual({
+        compatible: false,
+        conflicts: ['case supports ATX PSU'],
+      })
+      expect(checkPartOption('case', pcCase, build)).toEqual({
+        compatible: false,
+        conflicts: ['SFX power supply'],
+      })
+    })
+
+    it('lists the power supply size after the motherboard size on a case', () => {
+      const pcCase = chassis(270, 61, 'Compact case', ['Mini-ITX'], [
+        'SFX',
+        'SFX-L',
+      ])
+
+      expect(
+        checkPartOption(
+          'case',
+          pcCase,
+          selected({
+            motherboard: board('AM5', 'ATX board', 'DDR5', 2, 4, 'ATX'),
+            psu: supply(
+              550,
+              'Corsair CX550',
+              { eightPin: 2, twelveVhpwr: 0 },
+              'ATX',
+            ),
+            gpu: card(450, 'NVIDIA GeForce RTX 4090', 304),
+            cooler: tower(165, 'Noctua NH-D15'),
+          }),
+        ),
+      ).toEqual({
+        compatible: false,
+        conflicts: [
+          'ATX motherboard',
+          'ATX power supply',
+          '304mm GPU',
+          '165mm cooler',
+        ],
+      })
+    })
+
+    it('lists the case power supply sizes after a wattage shortfall', () => {
+      const psu = supply(
+        550,
+        'Corsair CX550',
+        { eightPin: 2, twelveVhpwr: 0 },
+        'ATX',
+      )
+      const gpu = card(450, 'NVIDIA GeForce RTX 4090', 304, [
+        { eightPin: 3, twelveVhpwr: 0 },
+        { eightPin: 0, twelveVhpwr: 1 },
+      ])
+
+      expect(
+        checkPartOption(
+          'psu',
+          psu,
+          selected({
+            cpu: cpu('AM5', 'AMD Ryzen 5 7600', 65),
+            gpu,
+            case: chassis(
+              330,
+              155,
+              'Cooler Master NR200P',
+              ['Mini-ITX'],
+              ['SFX', 'SFX-L'],
+            ),
+          }),
+        ),
+      ).toEqual({
+        compatible: false,
+        conflicts: [
+          'below 615W',
+          'GPU needs 3x 8-pin or 1x 12VHPWR',
+          'case supports SFX, SFX-L PSU',
+        ],
+      })
+    })
+
     it('lists the motherboard size before clearance conflicts on a case', () => {
       const pcCase = chassis(270, 61, 'SilverStone SUGO SG13', ['Mini-ITX'])
 
@@ -962,6 +1059,46 @@ describe('checkPartOption', () => {
         compatible,
       )
       expect(checkPartOption('case', mini, selected())).toEqual(compatible)
+    })
+
+    it('skips power supply form factor until a case or a supply is selected', () => {
+      const sfxSupply = supply(
+        750,
+        'Corsair SF750',
+        { eightPin: 4, twelveVhpwr: 0 },
+        'SFX',
+      )
+      const atxCase = chassis(355, 170, 'ATX case', ['ATX'], ['ATX'])
+
+      expect(checkPartOption('psu', sfxSupply, selected())).toEqual(compatible)
+      expect(checkPartOption('case', atxCase, selected())).toEqual(compatible)
+    })
+
+    it('leaves the options unmarked when the power supply size is missing', () => {
+      const psu = supply(
+        550,
+        'Corsair CX550',
+        { eightPin: 2, twelveVhpwr: 0 },
+        'ATX',
+      )
+      const mystery = chassis(355, 170, 'Mystery case', ['ATX'], [])
+      const listed = selected({ psu, case: mystery })
+
+      expect(checkPartOption('psu', psu, listed)).toEqual(compatible)
+      expect(checkPartOption('case', mystery, listed)).toEqual(compatible)
+
+      const bare = { ...psu, formFactor: undefined } as unknown as Psu
+      const pcCase = chassis(
+        355,
+        170,
+        'Fractal Design North',
+        ['ATX', 'Micro-ATX', 'Mini-ITX'],
+        ['ATX'],
+      )
+      const unlisted = selected({ psu: bare, case: pcCase })
+
+      expect(checkPartOption('psu', bare, unlisted)).toEqual(compatible)
+      expect(checkPartOption('case', pcCase, unlisted)).toEqual(compatible)
     })
 
     it('leaves the options unmarked when the size data is missing', () => {

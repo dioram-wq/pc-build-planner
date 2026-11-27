@@ -483,6 +483,109 @@ describe('App', () => {
     ).toBeTruthy()
   })
 
+  it('accepts an ATX supply in a case that lists ATX', () => {
+    render(<App />)
+
+    expect(
+      screen.getByText(
+        'Compatible. Corsair CX550 (ATX) fits Fractal Design North (ATX).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Corsair CX550 · 550W · ATX · 2x 8-pin · $65',
+      }).className,
+    ).not.toContain('incompatible')
+    expect(
+      screen.getByRole('option', {
+        name: 'Fractal Design North · ATX, Micro-ATX, Mini-ITX · ATX PSU · 355mm GPU · 170mm cooler · $140',
+      }).className,
+    ).not.toContain('incompatible')
+  })
+
+  it('flags an SFX supply that an ATX case cannot take', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Power supply'), {
+      target: { value: 'psu-sf750' },
+    })
+
+    expect(screen.getByText('Power supply does not fit.')).toBeTruthy()
+    expect(
+      screen.getByText(
+        'Corsair SF750 (SFX) does not fit Fractal Design North (ATX).',
+      ),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', {
+        name: 'Build status: 1 compatibility issue',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Corsair SF750 · 750W · SFX · 4x 8-pin · $169 — incompatible: case supports ATX PSU',
+      }),
+    ).toHaveProperty('disabled', false)
+    expect(
+      screen.getByRole('option', {
+        name: 'Fractal Design North · ATX, Micro-ATX, Mini-ITX · ATX PSU · 355mm GPU · 170mm cooler · $140 — incompatible: SFX power supply',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Corsair CX550 · 550W · ATX · 2x 8-pin · $65',
+      }).className,
+    ).not.toContain('incompatible')
+
+    fireEvent.change(screen.getByLabelText('Case'), {
+      target: { value: 'case-nr200' },
+    })
+
+    expect(
+      screen.getByText(
+        'Compatible. Corsair SF750 (SFX) fits Cooler Master NR200P (SFX, SFX-L).',
+      ),
+    ).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Case'), {
+      target: { value: '' },
+    })
+
+    expect(screen.getByText('No case for the power supply.')).toBeTruthy()
+    expect(
+      screen.getByText('Select a case to check the power supply form factor.'),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Corsair SF750 · 750W · SFX · 4x 8-pin · $169',
+      }).className,
+    ).not.toContain('incompatible')
+  })
+
+  it('asks for a power supply before checking its form factor', () => {
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Power supply'), {
+      target: { value: '' },
+    })
+
+    expect(screen.getByText('No power supply size selected.')).toBeTruthy()
+    expect(
+      screen.getByText('Select a power supply to check its form factor.'),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('status', { name: 'Build status: All checks pass' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('option', {
+        name: 'Fractal Design North · ATX, Micro-ATX, Mini-ITX · ATX PSU · 355mm GPU · 170mm cooler · $140',
+      }).className,
+    ).not.toContain('incompatible')
+  })
+
   it('asks for a supply before checking graphics card power connectors', () => {
     render(<App />)
 

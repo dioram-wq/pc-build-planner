@@ -571,4 +571,62 @@ describe('buildStatusSummary', () => {
       buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
     ).toEqual({ level: 'ok', text: 'All checks pass' })
   })
+
+  it('counts a power supply the case cannot take', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4)
+    const checks = passing()
+    checks.psuFormFactor = checkPsuFormFactor(
+      supply(750, 'Corsair SF750', { eightPin: 4, twelveVhpwr: 0 }, 'SFX'),
+      chassis(
+        355,
+        170,
+        'Fractal Design North',
+        ['ATX', 'Micro-ATX', 'Mini-ITX'],
+        ['ATX'],
+      ),
+    )
+
+    expect(checks.psuFormFactor.status).toBe('unsupported')
+    expect(checks.formFactor.status).toBe('ok')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'issue', text: '1 compatibility issue' })
+  })
+
+  it('ignores a missing supply, a missing case, and unlisted power supply sizes', () => {
+    const ryzen = cpu('AM5', 'AMD Ryzen 5 7600', 65)
+    const b650 = board('AM5', 'ASUS TUF Gaming B650-PLUS', 'DDR5', 2, 4)
+    const checks = passing()
+
+    expect(checks.psuFormFactor.status).toBe('ok')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.psuFormFactor = checkPsuFormFactor(
+      null,
+      chassis(355, 170, 'Fractal Design North'),
+    )
+    expect(checks.psuFormFactor.status).toBe('missing')
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.psuFormFactor = checkPsuFormFactor(
+      supply(550, 'Corsair CX550'),
+      null,
+    )
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+
+    checks.psuFormFactor = checkPsuFormFactor(
+      { name: 'Unlisted supply' },
+      { name: 'Mystery case' },
+    )
+    expect(
+      buildStatusSummary({ cpu: ryzen, motherboard: b650 }, checks),
+    ).toEqual({ level: 'ok', text: 'All checks pass' })
+  })
 })

@@ -8,6 +8,7 @@ import {
   checkMemoryType,
   checkMotherboardFormFactor,
   checkPowerSupply,
+  checkPsuFormFactor,
   checkStorageInterface,
   type Case,
   type Cpu,
@@ -1760,6 +1761,269 @@ describe('checkMotherboardFormFactor', () => {
   })
 })
 
+describe('checkPsuFormFactor', () => {
+  const atx = (name = 'Corsair CX550') =>
+    supply(550, name, { eightPin: 2, twelveVhpwr: 0 }, 'ATX')
+  const sfx = (name = 'Corsair SF750') =>
+    supply(750, name, { eightPin: 4, twelveVhpwr: 0 }, 'SFX')
+  const sfxl = (name = 'SFX-L supply') =>
+    supply(700, name, { eightPin: 2, twelveVhpwr: 0 }, 'SFX-L')
+  const north = () =>
+    chassis(
+      355,
+      170,
+      'Fractal Design North',
+      ['ATX', 'Micro-ATX', 'Mini-ITX'],
+      ['ATX'],
+    )
+  const nr200 = () =>
+    chassis(330, 155, 'Cooler Master NR200P', ['Mini-ITX'], ['SFX', 'SFX-L'])
+  const sg13 = () =>
+    chassis(270, 61, 'SilverStone SUGO SG13', ['Mini-ITX'], ['ATX', 'SFX'])
+
+  it('accepts a supply whose size the case lists', () => {
+    expect(checkPsuFormFactor(atx(), north())).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('accepts a supply when the case lists only that size', () => {
+    expect(
+      checkPsuFormFactor(
+        sfx(),
+        chassis(330, 155, 'SFX only', ['Mini-ITX'], ['SFX']),
+      ),
+    ).toEqual({ status: 'ok', issues: [] })
+  })
+
+  it('accepts every listed size', () => {
+    const sizes = ['ATX', 'SFX', 'SFX-L'] as const
+    const pcCase = chassis(355, 170, 'Any supply', ['ATX'], sizes)
+
+    for (const formFactor of sizes) {
+      expect(
+        checkPsuFormFactor(
+          supply(650, 'Sample PSU', { eightPin: 2, twelveVhpwr: 0 }, formFactor),
+          pcCase,
+        ).status,
+      ).toBe('ok')
+    }
+  })
+
+  it('accepts ATX and SFX when the case lists both', () => {
+    expect(checkPsuFormFactor(atx(), sg13())).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+    expect(checkPsuFormFactor(sfx(), sg13())).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+  })
+
+  it('rejects an ATX supply the case does not list and names both sizes', () => {
+    expect(checkPsuFormFactor(atx(), nr200())).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'psu-form-factor-unsupported',
+          message:
+            'Corsair CX550 (ATX) does not fit Cooler Master NR200P (SFX, SFX-L).',
+        },
+      ],
+    })
+  })
+
+  it('does not treat SFX-L as a fit for a case that lists only SFX', () => {
+    expect(
+      checkPsuFormFactor(
+        sfxl(),
+        chassis(200, 70, 'SFX only', ['Mini-ITX'], ['SFX']),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'psu-form-factor-unsupported',
+          message: 'SFX-L supply (SFX-L) does not fit SFX only (SFX).',
+        },
+      ],
+    })
+  })
+
+  it('does not treat SFX as a fit for a case that lists only SFX-L', () => {
+    expect(
+      checkPsuFormFactor(
+        sfx(),
+        chassis(200, 70, 'SFX-L only', ['Mini-ITX'], ['SFX-L']),
+      ),
+    ).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'psu-form-factor-unsupported',
+          message: 'Corsair SF750 (SFX) does not fit SFX-L only (SFX-L).',
+        },
+      ],
+    })
+  })
+
+  it('rejects an SFX supply when the case lists only ATX', () => {
+    expect(checkPsuFormFactor(sfx(), north())).toEqual({
+      status: 'unsupported',
+      issues: [
+        {
+          code: 'psu-form-factor-unsupported',
+          message: 'Corsair SF750 (SFX) does not fit Fractal Design North (ATX).',
+        },
+      ],
+    })
+  })
+
+  it('asks for a power supply when none is selected', () => {
+    expect(checkPsuFormFactor(null, north())).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'psu-form-factor-missing',
+          message: 'Select a power supply to check its form factor.',
+        },
+      ],
+    })
+  })
+
+  it('asks for a case when none is selected', () => {
+    expect(checkPsuFormFactor(atx(), null)).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'psu-form-factor-missing',
+          message: 'Select a case to check the power supply form factor.',
+        },
+      ],
+    })
+  })
+
+  it('asks for a power supply when neither part is selected', () => {
+    expect(checkPsuFormFactor(null, null)).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'psu-form-factor-missing',
+          message: 'Select a power supply to check its form factor.',
+        },
+      ],
+    })
+  })
+
+  it('reports a supply that does not list a form factor', () => {
+    expect(checkPsuFormFactor({ name: 'Unlisted supply' }, north())).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'psu-form-factor-missing',
+          message: 'Unlisted supply does not list a form factor.',
+        },
+      ],
+    })
+
+    expect(
+      checkPsuFormFactor(
+        { name: 'Unlisted supply', formFactor: null },
+        north(),
+      ).status,
+    ).toBe('missing')
+  })
+
+  it('reports a case that does not list the power supply sizes it supports', () => {
+    expect(
+      checkPsuFormFactor(atx(), chassis(355, 170, 'Mystery case', ['ATX'], [])),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'psu-form-factor-missing',
+          message:
+            'Mystery case does not list the power supply sizes it supports.',
+        },
+      ],
+    })
+
+    expect(
+      checkPsuFormFactor(atx(), { name: 'Mystery case' }).issues[0]?.message,
+    ).toBe('Mystery case does not list the power supply sizes it supports.')
+  })
+
+  it('reports both parts when neither lists a size', () => {
+    expect(
+      checkPsuFormFactor(
+        { name: 'Unlisted supply' },
+        { name: 'Mystery case', supportedPsuFormFactors: [] },
+      ),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'psu-form-factor-missing',
+          message:
+            'Unlisted supply does not list a form factor, and Mystery case does not list the power supply sizes it supports.',
+        },
+      ],
+    })
+  })
+
+  it('treats an unrecognized size as missing data', () => {
+    expect(
+      checkPsuFormFactor(
+        { name: 'Odd supply', formFactor: 'TFX' as 'ATX' },
+        north(),
+      ),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'psu-form-factor-missing',
+          message: 'Odd supply does not list a form factor.',
+        },
+      ],
+    })
+
+    expect(
+      checkPsuFormFactor(atx(), {
+        name: 'Odd case',
+        supportedPsuFormFactors: ['TFX' as 'ATX'],
+      }),
+    ).toEqual({
+      status: 'missing',
+      issues: [
+        {
+          code: 'psu-form-factor-missing',
+          message: 'Odd case does not list the power supply sizes it supports.',
+        },
+      ],
+    })
+  })
+
+  it('ignores an unrecognized size and still uses a listed one', () => {
+    expect(
+      checkPsuFormFactor(atx(), {
+        name: 'Mixed case',
+        supportedPsuFormFactors: ['TFX' as 'ATX', 'ATX'],
+      }),
+    ).toEqual({ status: 'ok', issues: [] })
+
+    const missed = checkPsuFormFactor(sfx(), {
+      name: 'Mixed case',
+      supportedPsuFormFactors: ['TFX' as 'ATX', 'ATX'],
+    })
+    expect(missed.status).toBe('unsupported')
+    expect(missed.issues[0]?.message).toBe(
+      'Corsair SF750 (SFX) does not fit Mixed case (ATX).',
+    )
+  })
+})
+
 describe('sample catalog', () => {
   it('offers a motherboard for every CPU socket', () => {
     for (const part of cpus) {
@@ -2052,6 +2316,65 @@ describe('sample catalog', () => {
     expect(mismatch.status).toBe('unsupported')
     expect(mismatch.issues.map((issue) => issue.code)).toEqual([
       'gpu-connectors-insufficient',
+    ])
+  })
+
+  it('records a form factor on every supply and supported power supply sizes on every case', () => {
+    const sizes = ['ATX', 'SFX', 'SFX-L'] as const
+
+    expect(psus.length).toBeGreaterThan(0)
+    for (const part of psus) {
+      expect(sizes).toContain(part.formFactor)
+    }
+
+    expect(cases.length).toBeGreaterThan(0)
+    for (const part of cases) {
+      expect(part.supportedPsuFormFactors.length).toBeGreaterThan(0)
+      for (const size of part.supportedPsuFormFactors) {
+        expect(sizes).toContain(size)
+      }
+    }
+  })
+
+  it('includes a case that fits each sample supply and a case that does not', () => {
+    for (const part of psus) {
+      const results = cases.map((pcCase) => checkPsuFormFactor(part, pcCase))
+
+      expect(results.some((result) => result.status === 'ok')).toBe(true)
+      expect(results.some((result) => result.status === 'unsupported')).toBe(
+        true,
+      )
+    }
+  })
+
+  it('fits ATX supplies in the North and the SF750 in the NR200P', () => {
+    const cx550 = psus.find((part) => part.id === 'psu-550')
+    const sf750 = psus.find((part) => part.id === 'psu-sf750')
+    const pcNorth = cases.find((part) => part.id === 'case-north')
+    const pcNr200 = cases.find((part) => part.id === 'case-nr200')
+    const pcSg13 = cases.find((part) => part.id === 'case-sg13')
+    if (!cx550 || !sf750 || !pcNorth || !pcNr200 || !pcSg13) {
+      throw new Error('expected the sample supplies and cases')
+    }
+
+    expect(checkPsuFormFactor(cx550, pcNorth)).toEqual({
+      status: 'ok',
+      issues: [],
+    })
+    expect(checkPsuFormFactor(cx550, pcSg13).status).toBe('ok')
+    expect(checkPsuFormFactor(sf750, pcNr200).status).toBe('ok')
+    expect(checkPsuFormFactor(sf750, pcSg13).status).toBe('ok')
+
+    const atxInSff = checkPsuFormFactor(cx550, pcNr200)
+    expect(atxInSff.status).toBe('unsupported')
+    expect(atxInSff.issues.map((issue) => issue.code)).toEqual([
+      'psu-form-factor-unsupported',
+    ])
+
+    const sfxInAtx = checkPsuFormFactor(sf750, pcNorth)
+    expect(sfxInAtx.status).toBe('unsupported')
+    expect(sfxInAtx.issues.map((issue) => issue.code)).toEqual([
+      'psu-form-factor-unsupported',
     ])
   })
 })
