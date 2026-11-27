@@ -4,6 +4,8 @@ export type MemoryType = 'DDR4' | 'DDR5'
 
 export type BoardFormFactor = 'ATX' | 'Micro-ATX' | 'Mini-ITX'
 
+export type PsuFormFactor = 'ATX' | 'SFX' | 'SFX-L'
+
 export type Cpu = {
   id: string
   name: string
@@ -395,6 +397,7 @@ export type Case = {
   maxGpuLengthMm: number
   maxCoolerHeightMm: number
   supportedFormFactors: readonly BoardFormFactor[]
+  supportedPsuFormFactors: readonly PsuFormFactor[]
 }
 
 export type Psu = {
@@ -402,6 +405,7 @@ export type Psu = {
   name: string
   wattage: number
   powerConnectors: PowerConnectorCount
+  formFactor: PsuFormFactor
 }
 
 export const PLATFORM_ALLOWANCE_WATTS = 100
@@ -873,4 +877,114 @@ function missingFormFactorMessage(
   }
 
   return `${caseName} does not list the motherboard sizes it supports.`
+}
+
+export type PsuFormFactorStatus = 'ok' | 'unsupported' | 'missing'
+
+export type PsuFormFactorIssue = {
+  code: 'psu-form-factor-unsupported' | 'psu-form-factor-missing'
+  message: string
+}
+
+export type PsuFormFactorCheck = {
+  status: PsuFormFactorStatus
+  issues: PsuFormFactorIssue[]
+}
+
+export type PsuFormFactorSupply = {
+  name: string
+  formFactor?: PsuFormFactor | null
+}
+
+export type PsuFormFactorCase = {
+  name: string
+  supportedPsuFormFactors?: readonly PsuFormFactor[] | null
+}
+
+const psuFormFactors: readonly PsuFormFactor[] = ['ATX', 'SFX', 'SFX-L']
+
+export function formatPsuFormFactorList(
+  formFactors: readonly PsuFormFactor[],
+): string {
+  return formFactors.join(', ')
+}
+
+function isPsuFormFactor(value: unknown): value is PsuFormFactor {
+  return psuFormFactors.some((formFactor) => formFactor === value)
+}
+
+function listedPsuFormFactors(
+  formFactors: readonly PsuFormFactor[] | null | undefined,
+): PsuFormFactor[] {
+  if (!formFactors) return []
+  return formFactors.filter(isPsuFormFactor)
+}
+
+function missingPsuFormFactorCheck(message: string): PsuFormFactorCheck {
+  return {
+    status: 'missing',
+    issues: [{ code: 'psu-form-factor-missing', message }],
+  }
+}
+
+export function checkPsuFormFactor(
+  psu: PsuFormFactorSupply | null,
+  pcCase: PsuFormFactorCase | null,
+): PsuFormFactorCheck {
+  if (!psu) {
+    return missingPsuFormFactorCheck(
+      'Select a power supply to check its form factor.',
+    )
+  }
+
+  if (!pcCase) {
+    return missingPsuFormFactorCheck(
+      'Select a case to check the power supply form factor.',
+    )
+  }
+
+  const formFactor = isPsuFormFactor(psu.formFactor) ? psu.formFactor : null
+  const supported = listedPsuFormFactors(pcCase.supportedPsuFormFactors)
+
+  if (!formFactor || supported.length === 0) {
+    return missingPsuFormFactorCheck(
+      missingPsuFormFactorMessage(
+        psu.name,
+        pcCase.name,
+        formFactor != null,
+        supported.length > 0,
+      ),
+    )
+  }
+
+  if (supported.includes(formFactor)) {
+    return { status: 'ok', issues: [] }
+  }
+
+  return {
+    status: 'unsupported',
+    issues: [
+      {
+        code: 'psu-form-factor-unsupported',
+        message: `${psu.name} (${formFactor}) does not fit ${pcCase.name} (${formatPsuFormFactorList(supported)}).`,
+      },
+    ],
+  }
+}
+
+function missingPsuFormFactorMessage(
+  psuName: string,
+  caseName: string,
+  psuListed: boolean,
+  caseListed: boolean,
+): string {
+  if (!psuListed && !caseListed) {
+    return `${psuName} does not list a form factor, and ${caseName} does not list the power supply sizes it supports.`
+  }
+
+  if (!psuListed) {
+    return `${psuName} does not list a form factor.`
+  }
+
+  return `${caseName} does not list the power supply sizes it supports.`
 }

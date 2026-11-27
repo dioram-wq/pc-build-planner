@@ -168,12 +168,12 @@ describe('App', () => {
     ).toBeTruthy()
     expect(
       screen.getByRole('status', {
-        name: 'Build status: 1 compatibility issue',
+        name: 'Build status: 2 compatibility issues',
       }),
     ).toBeTruthy()
     expect(
       screen.getByRole('option', {
-        name: 'Cooler Master NR200P · Mini-ITX · 330mm GPU · 155mm cooler · $110 — incompatible: ATX motherboard',
+        name: 'Cooler Master NR200P · Mini-ITX · SFX, SFX-L PSU · 330mm GPU · 155mm cooler · $110 — incompatible: ATX motherboard, ATX power supply',
       }),
     ).toHaveProperty('disabled', false)
     expect(
@@ -183,7 +183,7 @@ describe('App', () => {
     ).toBeTruthy()
     expect(
       screen.getByRole('option', {
-        name: 'Fractal Design North · ATX, Micro-ATX, Mini-ITX · 355mm GPU · 170mm cooler · $140',
+        name: 'Fractal Design North · ATX, Micro-ATX, Mini-ITX · ATX PSU · 355mm GPU · 170mm cooler · $140',
       }).className,
     ).not.toContain('incompatible')
 
@@ -417,7 +417,7 @@ describe('App', () => {
     ).not.toContain('incompatible')
     expect(
       screen.getByRole('option', {
-        name: 'Corsair CX550 · 550W · 2x 8-pin · $65',
+        name: 'Corsair CX550 · 550W · ATX · 2x 8-pin · $65',
       }).className,
     ).not.toContain('incompatible')
   })
@@ -447,7 +447,7 @@ describe('App', () => {
     ).toHaveProperty('disabled', false)
     expect(
       screen.getByRole('option', {
-        name: 'Corsair CX550 · 550W · 2x 8-pin · $65 — incompatible: below 615W, GPU needs 3x 8-pin or 1x 12VHPWR',
+        name: 'Corsair CX550 · 550W · ATX · 2x 8-pin · $65 — incompatible: below 615W, GPU needs 3x 8-pin or 1x 12VHPWR',
       }),
     ).toBeTruthy()
 
@@ -1072,7 +1072,7 @@ describe('App', () => {
     ).not.toContain('incompatible')
     expect(
       screen.getByRole('option', {
-        name: 'SilverStone SUGO SG13 · Mini-ITX · 270mm GPU · 61mm cooler · $70 — incompatible: ATX motherboard, 70mm cooler',
+        name: 'SilverStone SUGO SG13 · Mini-ITX · ATX, SFX PSU · 270mm GPU · 61mm cooler · $70 — incompatible: ATX motherboard, 70mm cooler',
       }),
     ).toBeTruthy()
 
@@ -1093,7 +1093,7 @@ describe('App', () => {
     )
     expect(
       screen.getByRole('option', {
-        name: 'SilverStone SUGO SG13 · Mini-ITX · 270mm GPU · 61mm cooler · $70 — incompatible: ATX motherboard, 304mm GPU, 165mm cooler',
+        name: 'SilverStone SUGO SG13 · Mini-ITX · ATX, SFX PSU · 270mm GPU · 61mm cooler · $70 — incompatible: ATX motherboard, 304mm GPU, 165mm cooler',
       }),
     ).toBeTruthy()
 
@@ -1121,10 +1121,10 @@ describe('App', () => {
     })
 
     const insufficient = screen.getByRole('option', {
-      name: 'Corsair CX550 · 550W · 2x 8-pin · $65 — incompatible: below 615W, GPU needs 3x 8-pin or 1x 12VHPWR',
+      name: 'Corsair CX550 · 550W · ATX · 2x 8-pin · $65 — incompatible: below 615W, GPU needs 3x 8-pin or 1x 12VHPWR',
     })
     const tight = screen.getByRole('option', {
-      name: 'Corsair RM650x · 650W · 4x 8-pin · $110',
+      name: 'Corsair RM650x · 650W · ATX · 4x 8-pin · $110',
     })
 
     expect(insufficient.className).toContain('incompatible')

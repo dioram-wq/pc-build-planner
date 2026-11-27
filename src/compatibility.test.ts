@@ -105,6 +105,7 @@ function chassis(
     'Micro-ATX',
     'Mini-ITX',
   ],
+  supportedPsuFormFactors: Case['supportedPsuFormFactors'] = ['ATX'],
 ): Case {
   return {
     id: `case-${maxGpuLengthMm}-${maxCoolerHeightMm}`,
@@ -112,6 +113,7 @@ function chassis(
     maxGpuLengthMm,
     maxCoolerHeightMm,
     supportedFormFactors,
+    supportedPsuFormFactors,
   }
 }
 
@@ -119,8 +121,9 @@ function supply(
   wattage: number,
   name = 'Sample PSU',
   powerConnectors: Psu['powerConnectors'] = { eightPin: 4, twelveVhpwr: 1 },
+  formFactor: Psu['formFactor'] = 'ATX',
 ): Psu {
-  return { id: `psu-${wattage}`, name, wattage, powerConnectors }
+  return { id: `psu-${wattage}`, name, wattage, powerConnectors, formFactor }
 }
 
 function drive(

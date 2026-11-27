@@ -12,10 +12,12 @@ import {
   checkMemoryType,
   checkMotherboardFormFactor,
   checkPowerSupply,
+  checkPsuFormFactor,
   checkStorageInterface,
   formatDimmSlots,
   formatFormFactorList,
   formatModuleCount,
+  formatPsuFormFactorList,
   formatRequiredPowerConnectors,
   formatSocketList,
   formatSuppliedPowerConnectors,
@@ -398,6 +400,46 @@ function FormFactorStatus({
   )
 }
 
+function PsuFormFactorStatus({
+  psu,
+  pcCase,
+}: {
+  psu: Psu | null
+  pcCase: Case | null
+}) {
+  const result = checkPsuFormFactor(psu, pcCase)
+
+  if (result.status === 'ok' && psu && pcCase) {
+    return (
+      <p className="status ok" role="status">
+        {`Compatible. ${psu.name} (${psu.formFactor}) fits ${pcCase.name} (${formatPsuFormFactorList(pcCase.supportedPsuFormFactors)}).`}
+      </p>
+    )
+  }
+
+  let heading = 'No power supply size selected.'
+  let tone = 'missing'
+  if (result.status === 'unsupported') {
+    heading = 'Power supply does not fit.'
+    tone = 'bad'
+  } else if (psu && !pcCase) {
+    heading = 'No case for the power supply.'
+  } else if (psu && pcCase) {
+    heading = 'Power supply form factor unknown.'
+  }
+
+  return (
+    <div className={`status ${tone}`} role="status">
+      <p>{heading}</p>
+      <ul>
+        {result.issues.map((issue) => (
+          <li key={issue.code}>{issue.message}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function ClearanceStatus({
   pcCase,
   gpu,
@@ -585,6 +627,7 @@ export default function App() {
       formFactor: checkMotherboardFormFactor(motherboard, pcCase),
       coolerSocket: checkCoolerSocket(cooler, cpu),
       gpuConnectors: checkGpuPowerConnectors(gpu, psu),
+      psuFormFactor: checkPsuFormFactor(psu, pcCase),
     },
   )
   const priceSlots: PriceBreakdownSlot[] = [
@@ -654,10 +697,10 @@ export default function App() {
           kit fits the board's slots and capacity, that the cooler supports
           the processor socket, that the supply covers the estimated draw
           and the graphics card's power connectors, that the case supports
-          the motherboard form factor, that the cooler and graphics card fit
-          the case, and that the motherboard supports the drive interface. A
-          line at the top of the build counts any compatibility issues.
-          Options that conflict with the parts already
+          the motherboard and the power supply form factor, that the cooler
+          and graphics card fit the case, and that the motherboard supports
+          the drive interface. A line at the top of the build counts any
+          compatibility issues. Options that conflict with the parts already
           chosen are marked in each list and can still be selected. Sample
           prices for the selected parts are listed and totaled below. The
           address bar keeps a link to this build.
@@ -791,7 +834,7 @@ export default function App() {
                 <CatalogOption
                   key={part.id}
                   id={part.id}
-                  label={`${part.name} · ${formatFormFactorList(part.supportedFormFactors)} · ${part.maxGpuLengthMm}mm GPU · ${part.maxCoolerHeightMm}mm cooler · ${formatUsd(part.priceUsd)}`}
+                  label={`${part.name} · ${formatFormFactorList(part.supportedFormFactors)} · ${formatPsuFormFactorList(part.supportedPsuFormFactors)} PSU · ${part.maxGpuLengthMm}mm GPU · ${part.maxCoolerHeightMm}mm cooler · ${formatUsd(part.priceUsd)}`}
                   conflicts={checkPartOption('case', part, selected).conflicts}
                 />
               ))}
@@ -811,7 +854,7 @@ export default function App() {
                 <CatalogOption
                   key={part.id}
                   id={part.id}
-                  label={`${part.name} · ${part.wattage}W · ${formatSuppliedPowerConnectors(part.powerConnectors)} · ${formatUsd(part.priceUsd)}`}
+                  label={`${part.name} · ${part.wattage}W · ${part.formFactor} · ${formatSuppliedPowerConnectors(part.powerConnectors)} · ${formatUsd(part.priceUsd)}`}
                   conflicts={checkPartOption('psu', part, selected).conflicts}
                 />
               ))}
@@ -849,6 +892,7 @@ export default function App() {
         <PowerSupplyStatus cpu={cpu} gpu={gpu} psu={psu} />
         <GpuConnectorStatus gpu={gpu} psu={psu} />
         <FormFactorStatus motherboard={motherboard} pcCase={pcCase} />
+        <PsuFormFactorStatus psu={psu} pcCase={pcCase} />
         <ClearanceStatus pcCase={pcCase} gpu={gpu} cooler={cooler} />
         <StorageStatus drive={drive} motherboard={motherboard} />
       </section>

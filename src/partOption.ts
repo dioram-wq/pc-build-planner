@@ -7,10 +7,12 @@ import {
   checkMemoryType,
   checkMotherboardFormFactor,
   checkPowerSupply,
+  checkPsuFormFactor,
   checkStorageInterface,
   formatDimmSlots,
   formatFormFactorList,
   formatModuleCount,
+  formatPsuFormFactorList,
   formatRequiredPowerConnectors,
   formatSocketList,
   formatSuppliedPowerConnectors,
@@ -252,6 +254,11 @@ function caseConflicts(candidate: Case, build: SelectedBuild): PartOptionCheck {
     if (formFactor) conflicts.push(formFactor)
   }
 
+  if (build.psu) {
+    const psuSize = casePsuFormFactorConflict(candidate, build.psu)
+    if (psuSize) conflicts.push(psuSize)
+  }
+
   if (clearance.gpuLength === 'too-long' && build.gpu) {
     conflicts.push(`${build.gpu.lengthMm}mm GPU`)
   }
@@ -276,6 +283,11 @@ function psuConflicts(candidate: Psu, build: SelectedBuild): PartOptionCheck {
   if (build.gpu) {
     const connectors = psuConnectorConflict(build.gpu, candidate)
     if (connectors) conflicts.push(connectors)
+  }
+
+  if (build.case) {
+    const size = psuFormFactorConflict(candidate, build.case)
+    if (size) conflicts.push(size)
   }
 
   return optionResult(conflicts)
@@ -339,6 +351,20 @@ function caseFormFactorConflict(
   if (result.status !== 'unsupported' || !motherboard.formFactor) return null
 
   return `${motherboard.formFactor} motherboard`
+}
+
+function psuFormFactorConflict(psu: Psu, pcCase: Case): string | null {
+  const result = checkPsuFormFactor(psu, pcCase)
+  if (result.status !== 'unsupported') return null
+
+  return `case supports ${formatPsuFormFactorList(pcCase.supportedPsuFormFactors)} PSU`
+}
+
+function casePsuFormFactorConflict(pcCase: Case, psu: Psu): string | null {
+  const result = checkPsuFormFactor(psu, pcCase)
+  if (result.status !== 'unsupported' || !psu.formFactor) return null
+
+  return `${psu.formFactor} power supply`
 }
 
 function coolerSocketConflict(cooler: CpuCooler, cpu: Cpu): string | null {

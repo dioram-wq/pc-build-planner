@@ -9,6 +9,7 @@ import {
   checkMemoryType,
   checkMotherboardFormFactor,
   checkPowerSupply,
+  checkPsuFormFactor,
   checkStorageInterface,
   type BoardFormFactor,
   type Case,
@@ -92,6 +93,7 @@ function chassis(
     'Micro-ATX',
     'Mini-ITX',
   ],
+  supportedPsuFormFactors: Case['supportedPsuFormFactors'] = ['ATX'],
 ): Case {
   return {
     id: `case-${maxGpuLengthMm}-${maxCoolerHeightMm}`,
@@ -99,6 +101,7 @@ function chassis(
     maxGpuLengthMm,
     maxCoolerHeightMm,
     supportedFormFactors,
+    supportedPsuFormFactors,
   }
 }
 
@@ -106,8 +109,9 @@ function supply(
   wattage: number,
   name = 'Sample PSU',
   powerConnectors: Psu['powerConnectors'] = { eightPin: 4, twelveVhpwr: 1 },
+  formFactor: Psu['formFactor'] = 'ATX',
 ): Psu {
-  return { id: `psu-${wattage}`, name, wattage, powerConnectors }
+  return { id: `psu-${wattage}`, name, wattage, powerConnectors, formFactor }
 }
 
 function drive(
@@ -137,6 +141,7 @@ function checksFor(parts: {
     formFactor: checkMotherboardFormFactor(parts.motherboard, parts.pcCase),
     coolerSocket: checkCoolerSocket(parts.cooler, parts.cpu),
     gpuConnectors: checkGpuPowerConnectors(parts.gpu, parts.psu),
+    psuFormFactor: checkPsuFormFactor(parts.psu, parts.pcCase),
   }
 }
 
@@ -167,6 +172,7 @@ describe('buildStatusSummary', () => {
           formFactor: null,
           coolerSocket: null,
           gpuConnectors: null,
+          psuFormFactor: null,
         },
       ),
     ).toEqual({
@@ -187,6 +193,7 @@ describe('buildStatusSummary', () => {
       formFactor: null,
       coolerSocket: null,
       gpuConnectors: null,
+      psuFormFactor: null,
     }
 
     expect(
@@ -223,6 +230,7 @@ describe('buildStatusSummary', () => {
         formFactor: null,
         coolerSocket: null,
         gpuConnectors: null,
+        psuFormFactor: null,
       },
     )
 

@@ -222,6 +222,7 @@ const caseCatalog = [
     maxGpuLengthMm: 355,
     maxCoolerHeightMm: 170,
     supportedFormFactors: ['ATX', 'Micro-ATX', 'Mini-ITX'],
+    supportedPsuFormFactors: ['ATX'],
   },
   {
     id: 'case-lancool',
@@ -229,6 +230,7 @@ const caseCatalog = [
     maxGpuLengthMm: 392,
     maxCoolerHeightMm: 180,
     supportedFormFactors: ['ATX', 'Micro-ATX', 'Mini-ITX'],
+    supportedPsuFormFactors: ['ATX'],
   },
   {
     id: 'case-nr200',
@@ -236,6 +238,7 @@ const caseCatalog = [
     maxGpuLengthMm: 330,
     maxCoolerHeightMm: 155,
     supportedFormFactors: ['Mini-ITX'],
+    supportedPsuFormFactors: ['SFX', 'SFX-L'],
   },
   {
     id: 'case-sg13',
@@ -243,6 +246,7 @@ const caseCatalog = [
     maxGpuLengthMm: 270,
     maxCoolerHeightMm: 61,
     supportedFormFactors: ['Mini-ITX'],
+    supportedPsuFormFactors: ['ATX', 'SFX'],
   },
 ] as const satisfies readonly Case[]
 
@@ -254,30 +258,42 @@ const psuCatalog = [
     name: 'Corsair CX550',
     wattage: 550,
     powerConnectors: { eightPin: 2, twelveVhpwr: 0 },
+    formFactor: 'ATX',
   },
   {
     id: 'psu-650',
     name: 'Corsair RM650x',
     wattage: 650,
     powerConnectors: { eightPin: 4, twelveVhpwr: 0 },
+    formFactor: 'ATX',
   },
   {
     id: 'psu-750',
     name: 'Seasonic Focus GX-750',
     wattage: 750,
     powerConnectors: { eightPin: 4, twelveVhpwr: 0 },
+    formFactor: 'ATX',
   },
   {
     id: 'psu-850',
     name: 'Corsair RM850x',
     wattage: 850,
     powerConnectors: { eightPin: 3, twelveVhpwr: 1 },
+    formFactor: 'ATX',
   },
   {
     id: 'psu-1000',
     name: 'be quiet! Straight Power 12',
     wattage: 1000,
     powerConnectors: { eightPin: 4, twelveVhpwr: 1 },
+    formFactor: 'ATX',
+  },
+  {
+    id: 'psu-sf750',
+    name: 'Corsair SF750',
+    wattage: 750,
+    powerConnectors: { eightPin: 4, twelveVhpwr: 0 },
+    formFactor: 'SFX',
   },
 ] as const satisfies readonly Psu[]
 
